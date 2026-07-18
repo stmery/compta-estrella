@@ -5,530 +5,422 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Compta Estrella</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style> body { font-family: ui-sans-serif, system-ui, sans-serif; } </style>
 </head>
 <body class="bg-stone-100">
   <div id="root"></div>
 
-  <script type="text/babel" data-presets="react">
-    const { useState, useEffect, useMemo } = React;
-
-    // ===== Connexion à VOTRE base Supabase =====
-    const SUPABASE_URL = "https://flhkokhrwogtmwlrqxyd.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_gUC1olBKyvlsubRDPlAOew_3tQNL9Vk";
-    const EMAIL_ACTIONNAIRES = "actionnaires@estrella.local";
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    const fmt = (n) => new Intl.NumberFormat("fr-FR").format(Math.round(n || 0));
-    const today = () => new Date().toISOString().slice(0, 10);
-    const MODES = ["Espèces", "Mobile money", "Virement", "Chèque"];
-    const MOIS = ["Août","Septembre","Octobre","Novembre","Décembre","Janvier","Février","Mars","Avril","Mai","Juin","Juillet"];
-
-    const inputCls = "w-full text-sm px-3 py-2 rounded-lg border border-stone-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/30";
-    const btnCls = "flex items-center justify-center gap-2 bg-emerald-800 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-emerald-900 disabled:opacity-40";
-
-    function Card({ children, className = "" }) {
-      return <div className={`bg-white rounded-xl border border-stone-200 ${className}`}>{children}</div>;
+  <script>
+    // Afficheur d'erreurs : si l'app plante, on voit le message au lieu d'une page blanche.
+    window.addEventListener('error', function (e) {
+      var r = document.getElementById('root');
+      if (r && !r.hasChildNodes()) {
+        r.innerHTML = '<pre style="padding:16px;color:#b91c1c;white-space:pre-wrap;font-size:12px;font-family:monospace">Erreur : ' +
+          ((e.message || e) + '') + '\n' + ((e.filename || '') + '') + ':' + ((e.lineno || '') + '') + '</pre>';
+      }
+    });
+    function bootCheck() {
+      if (typeof React === 'undefined' || typeof ReactDOM === 'undefined' || typeof supabase === 'undefined') {
+        document.getElementById('root').innerHTML =
+          '<pre style="padding:16px;color:#b91c1c;font-family:monospace">Une librairie (React / Supabase) n\'a pas pu se charger. Vérifiez votre connexion internet et rechargez la page.</pre>';
+        return false;
+      }
+      return true;
     }
-    function Field({ label, children }) {
-      return <div><label className="block text-xs text-stone-500 mb-1.5">{label}</label>{children}</div>;
-    }
+  </script>
 
-    // ============ LOGIN ============
-    function Login() {
-      const [mode, setMode] = useState("staff"); // 'staff' | 'actionnaire'
-      const [email, setEmail] = useState("");
-      const [pw, setPw] = useState("");
-      const [err, setErr] = useState("");
-      const [busy, setBusy] = useState(false);
-
-      const submit = async () => {
-        setErr(""); setBusy(true);
-        const mail = mode === "actionnaire" ? EMAIL_ACTIONNAIRES : email.trim();
-        const { error } = await sb.auth.signInWithPassword({ email: mail, password: pw });
-        setBusy(false);
-        if (error) setErr("Identifiants incorrects. Réessayez.");
-      };
-
-      return (
-        <div className="min-h-screen flex items-center justify-center px-4">
-          <Card className="p-6 w-full max-w-sm">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold">E</div>
-              <div>
-                <div className="text-lg font-medium leading-tight">Compta Estrella</div>
-                <div className="text-xs text-stone-500">Suivi financier</div>
-              </div>
-            </div>
-
-            {mode === "staff" ? (
-              <div className="space-y-3">
-                <Field label="Email"><input className={inputCls} value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="vous@estrella.local" /></Field>
-                <Field label="Mot de passe"><input className={inputCls} type="password" value={pw} onChange={(e)=>setPw(e.target.value)} onKeyDown={(e)=>e.key==='Enter'&&submit()} /></Field>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="text-sm text-stone-600 bg-stone-50 rounded-lg p-3 border border-stone-200">Accès actionnaires — saisissez simplement le mot de passe partagé.</div>
-                <Field label="Mot de passe"><input className={inputCls} type="password" value={pw} onChange={(e)=>setPw(e.target.value)} onKeyDown={(e)=>e.key==='Enter'&&submit()} autoFocus /></Field>
-              </div>
-            )}
-
-            {err && <div className="text-sm text-red-600 mt-3">{err}</div>}
-            <button className={btnCls + " w-full mt-4"} onClick={submit} disabled={busy}>{busy ? "Connexion…" : "Se connecter"}</button>
-
-            <button className="text-xs text-stone-500 hover:text-emerald-800 mt-4 w-full text-center"
-              onClick={()=>{setMode(mode==="staff"?"actionnaire":"staff"); setErr(""); setPw("");}}>
-              {mode === "staff" ? "Accès actionnaires →" : "← Accès personnel (comptable / secrétaire)"}
-            </button>
-          </Card>
-        </div>
-      );
-    }
-
-    // ============ APP ============
-    function App() {
-      const [session, setSession] = useState(undefined);
-      const [profile, setProfile] = useState(null);
-      const [data, setData] = useState(null);
-      const [tab, setTab] = useState("dashboard");
-      const [loading, setLoading] = useState(false);
-
-      useEffect(() => {
-        sb.auth.getSession().then(({ data }) => setSession(data.session));
-        const { data: sub } = sb.auth.onAuthStateChange((_e, s) => setSession(s));
-        return () => sub.subscription.unsubscribe();
-      }, []);
-
-      const reload = async () => {
-        setLoading(true);
-        const q = (t) => sb.from(t).select("*").order("id");
-        const [an, ni, el, pa, em, sa, ch, pr] = await Promise.all([
-          q("annee_scolaire"), q("niveau"), q("eleve"), q("paiement"), q("employe"), q("salaire"), q("charge_variable"),
-          sb.from("profiles").select("role,nom").eq("id", session.user.id).single(),
-        ]);
-        setProfile(pr.data);
-        setData({
-          annees: an.data || [], niveaux: ni.data || [], eleves: el.data || [],
-          paiements: pa.data || [], employes: em.data || [], salaires: sa.data || [], chargesVar: ch.data || [],
-        });
-        setLoading(false);
-      };
-
-      useEffect(() => { if (session) reload(); else { setProfile(null); setData(null); } }, [session]);
-
-      if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-stone-400">Chargement…</div>;
-      if (!session) return <Login />;
-      if (!data || !profile) return <div className="min-h-screen flex items-center justify-center text-stone-400">Chargement des données…</div>;
-
-      const isStaff = ["admin", "comptable", "secretaire"].includes(profile.role);
-      const annee = data.annees.find((a) => a.statut === "active") || data.annees[0] || null;
-      const anneeId = annee?.id;
-      const niveaux = data.niveaux.filter((n) => n.annee_id === anneeId);
-
-      // charges unifiées (salaires + dépenses)
-      const posteOf = (id) => data.employes.find((e) => e.id === id)?.poste || "—";
-      const charges = [
-        ...data.salaires.filter((s)=>s.annee_id===anneeId).map((s) => ({ id: "s"+s.id, kind: "salaire", label: posteOf(s.employe_id), mois: s.mois, montant: s.montant, date: s.date_paiement })),
-        ...data.chargesVar.filter((c)=>c.annee_id===anneeId).map((c) => ({ id: "c"+c.id, kind: "depense", label: c.designation, presta: c.prestataire, montant: c.montant, date: c.date_charge })),
-      ];
-
-      const situation = (eleveId) => {
-        const el = data.eleves.find((e) => e.id === eleveId);
-        const niv = niveaux.find((n) => n.id === el?.niveau_id);
-        const insVerse = data.paiements.filter((p)=>p.eleve_id===eleveId && p.type==="inscription").reduce((s,p)=>s+p.montant,0);
-        const scoVerse = data.paiements.filter((p)=>p.eleve_id===eleveId && p.type==="scolarite").reduce((s,p)=>s+p.montant,0);
-        const du = (niv?.frais_inscription||0)+(niv?.frais_scolarite||0);
-        const verse = insVerse+scoVerse;
-        return { niv, insDu: niv?.frais_inscription||0, scoDu: niv?.frais_scolarite||0, insVerse, scoVerse, du, verse,
-          reste: Math.max(0, du-verse), resteIns: Math.max(0,(niv?.frais_inscription||0)-insVerse), resteSco: Math.max(0,(niv?.frais_scolarite||0)-scoVerse) };
-      };
-
-      const elevesAnnee = data.eleves.filter((e) => niveaux.some((n)=>n.id===e.niveau_id));
-      const metrics = (() => {
-        const encaisse = data.paiements.filter((p)=>elevesAnnee.some((e)=>e.id===p.eleve_id)).reduce((s,p)=>s+p.montant,0);
-        const prevision = elevesAnnee.reduce((s,e)=>{ const n=niveaux.find((x)=>x.id===e.niveau_id); return s+(n?n.frais_inscription+n.frais_scolarite:0); },0);
-        const salaires = charges.filter((c)=>c.kind==="salaire").reduce((s,c)=>s+c.montant,0);
-        const autres = charges.filter((c)=>c.kind==="depense").reduce((s,c)=>s+c.montant,0);
-        const totalCharges = salaires+autres;
-        return { encaisse, prevision, reste: Math.max(0,prevision-encaisse), salaires, autres, totalCharges,
-          solde: encaisse-totalCharges, nbEleves: elevesAnnee.length, taux: prevision>0?Math.round(encaisse/prevision*100):0 };
-      })();
-
-      const TABS = [
-        { id: "dashboard", label: "Tableau de bord", read: true },
-        { id: "eleves", label: "Élèves", read: true },
-        { id: "paiement", label: "Paiement", staff: true },
-        { id: "charges", label: "Charges", read: true },
-        { id: "rapports", label: "Rapports", read: true },
-        { id: "config", label: "Configuration", staff: true },
-      ];
-      const visible = TABS.filter((t) => isStaff ? true : t.read);
-      const active = visible.some((t)=>t.id===tab) ? tab : "dashboard";
-
-      const logout = () => sb.auth.signOut();
-
-      return (
-        <div className="min-h-screen">
-          <div className="max-w-5xl mx-auto px-4 py-6">
-            <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold">E</div>
-                <div>
-                  <div className="text-lg font-medium leading-tight">Compta Estrella</div>
-                  <div className="text-xs text-stone-500">{annee ? "Année " + annee.libelle : "Aucune année active"}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-stone-500">
-                <span>{isStaff ? (profile.nom || "Staff") : "Actionnaire — lecture seule"}</span>
-                <button onClick={logout} className="px-3 py-1.5 rounded-lg border border-stone-300 hover:bg-white">Déconnexion</button>
-              </div>
-            </div>
-
-            <div className="flex gap-1 mb-5 overflow-x-auto pb-1">
-              {visible.map((t) => (
-                <button key={t.id} onClick={()=>setTab(t.id)}
-                  className={`text-sm px-3 py-2 rounded-lg border whitespace-nowrap shrink-0 ${active===t.id ? "bg-white border-stone-300 font-medium" : "border-transparent text-stone-500 hover:bg-white/60"}`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            {loading && <div className="text-xs text-stone-400 mb-3">Mise à jour…</div>}
-            {!annee && isStaff && active !== "config" && (
-              <Card className="p-5 mb-3 text-sm">Aucune année scolaire n'existe encore. Allez dans <b>Configuration</b> pour créer l'année et les niveaux.</Card>
-            )}
-
-            {active === "dashboard" && <Dashboard m={metrics} />}
-            {active === "eleves" && <Eleves eleves={elevesAnnee} niveaux={niveaux} situation={situation} isStaff={isStaff} anneeId={anneeId} reload={reload} />}
-            {active === "paiement" && isStaff && <Paiement eleves={elevesAnnee} niveaux={niveaux} situation={situation} reload={reload} />}
-            {active === "charges" && <Charges charges={charges} isStaff={isStaff} anneeId={anneeId} employes={data.employes} reload={reload} />}
-            {active === "rapports" && <Rapports eleves={elevesAnnee} niveaux={niveaux} situation={situation} charges={charges} metrics={metrics} />}
-            {active === "config" && isStaff && <Config annee={annee} niveaux={niveaux} reload={reload} />}
-
-            <p className="text-center text-xs text-stone-400 mt-8">Compta Estrella · {annee ? annee.libelle : ""}</p>
-          </div>
-        </div>
-      );
-    }
-
-    function Dashboard({ m }) {
-      const kpis = [
-        { label: "Revenus encaissés", val: m.encaisse, unit: "FCFA" },
-        { label: "Charges", val: m.totalCharges, unit: "FCFA" },
-        { label: "Solde (trésorerie)", val: m.solde, unit: "FCFA", pos: true },
-        { label: "Élèves inscrits", val: m.nbEleves, unit: "élèves", plain: true },
-      ];
-      const salPct = m.totalCharges ? Math.round(m.salaires/m.totalCharges*100) : 0;
-      return (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {kpis.map((k)=>(
-              <div key={k.label} className="bg-stone-50 rounded-xl p-4 border border-stone-200">
-                <div className="text-xs text-stone-500 mb-1">{k.label}</div>
-                <div className={`text-xl sm:text-2xl font-medium ${k.pos ? "text-emerald-800" : ""}`}>
-                  {k.pos && m.solde>=0 ? "+" : ""}{k.plain ? m.nbEleves : fmt(k.val)}
-                </div>
-                <div className="text-xs text-stone-400 mt-0.5">{k.unit}</div>
-              </div>
-            ))}
-          </div>
-          <Card className="p-5">
-            <div className="flex items-baseline justify-between mb-2 flex-wrap gap-1">
-              <span className="text-sm font-medium">Taux de recouvrement</span>
-              <span className="text-sm text-stone-500">{fmt(m.encaisse)} sur {fmt(m.prevision)} prévus</span>
-            </div>
-            <div className="h-3 rounded-full bg-stone-100 overflow-hidden"><div className="h-full bg-emerald-700 rounded-full" style={{width:`${Math.min(100,m.taux)}%`}}></div></div>
-            <div className="flex justify-between mt-2 flex-wrap gap-1">
-              <span className="text-sm font-medium text-emerald-800">{m.taux} % recouvré</span>
-              <span className="text-sm text-amber-700">Reste à recouvrer : {fmt(m.reste)} FCFA</span>
-            </div>
-          </Card>
-          <Card className="p-5">
-            <div className="text-sm font-medium mb-4">Répartition des charges</div>
-            {[{l:"Salaires",v:m.salaires,p:salPct,c:"bg-emerald-700"},{l:"Autres charges",v:m.autres,p:m.totalCharges?100-salPct:0,c:"bg-teal-500"}].map((r)=>(
-              <div key={r.l} className="mb-3 last:mb-0">
-                <div className="flex justify-between text-sm mb-1.5"><span className="text-stone-500">{r.l}</span><span className="font-medium">{fmt(r.v)} FCFA · {r.p} %</span></div>
-                <div className="h-2.5 rounded-full bg-stone-100 overflow-hidden"><div className={`h-full rounded-full ${r.c}`} style={{width:`${r.p}%`}}></div></div>
-              </div>
-            ))}
-          </Card>
-        </div>
-      );
-    }
-
-    function SituationPanel({ s }) {
-      if (!s) return null;
-      const soldee = s.reste === 0;
-      return (
-        <div className="bg-stone-50 rounded-lg p-3 border border-stone-200">
-          <div className="text-xs text-stone-500 mb-2">Situation de l'élève{soldee && <span className="ml-1 text-emerald-700 font-medium">· soldée</span>}</div>
-          <div className="grid grid-cols-3 gap-3 text-sm">
-            <div><div className="text-xs text-stone-500">Inscription</div><div className="font-medium">{fmt(s.insVerse)} / {fmt(s.insDu)}</div>{s.resteIns>0 && <div className="text-xs text-amber-700">reste {fmt(s.resteIns)}</div>}</div>
-            <div><div className="text-xs text-stone-500">Scolarité</div><div className="font-medium">{fmt(s.scoVerse)} / {fmt(s.scoDu)}</div>{s.resteSco>0 && <div className="text-xs text-amber-700">reste {fmt(s.resteSco)}</div>}</div>
-            <div><div className="text-xs text-stone-500">Reste à payer</div><div className={`font-medium ${soldee?"text-emerald-800":"text-amber-700"}`}>{fmt(s.reste)} FCFA</div></div>
-          </div>
-        </div>
-      );
-    }
-
-    function Eleves({ eleves, niveaux, situation, isStaff, anneeId, reload }) {
-      const [nom, setNom] = useState(""); const [naissance, setNaissance] = useState("");
-      const [niveauId, setNiveauId] = useState(niveaux[0]?.id); const [verse, setVerse] = useState(""); const [mode, setMode] = useState(MODES[0]);
-      const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
-      const niv = niveaux.find((n)=>n.id===Number(niveauId));
-      const resteIns = Math.max(0,(niv?.frais_inscription||0)-(Number(verse)||0));
-
-      const submit = async () => {
-        if (!nom.trim() || !niveauId) return;
-        setBusy(true); setErr("");
-        const { data: el, error } = await sb.from("eleve").insert({ niveau_id: Number(niveauId), nom_prenoms: nom.trim(), date_naissance: naissance || null }).select().single();
-        if (error) { setErr(error.message); setBusy(false); return; }
-        const v = Number(verse)||0;
-        if (v>0) { await sb.from("paiement").insert({ eleve_id: el.id, type: "inscription", montant: v, date_paiement: today(), mode_paiement: mode }); }
-        setNom(""); setNaissance(""); setVerse(""); setBusy(false);
-        await reload();
-      };
-
-      // regroupé par niveau (lecture)
-      const groups = niveaux.map((n)=>({niv:n,list:eleves.filter((e)=>e.niveau_id===n.id)})).filter((g)=>g.list.length>0);
-
-      return (
-        <div className="space-y-3">
-          {isStaff && (
-            <Card className="p-5">
-              <div className="text-base font-medium mb-4">Ajouter un élève</div>
-              <div className="mb-3"><Field label="Nom & prénoms"><input className={inputCls} value={nom} onChange={(e)=>setNom(e.target.value)} placeholder="Ex. Traoré Zoumana" /></Field></div>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <Field label="Date de naissance"><input className={inputCls} type="date" value={naissance} onChange={(e)=>setNaissance(e.target.value)} /></Field>
-                <Field label="Niveau"><select className={inputCls} value={niveauId} onChange={(e)=>setNiveauId(e.target.value)}>{niveaux.map((n)=><option key={n.id} value={n.id}>{n.libelle}</option>)}</select></Field>
-              </div>
-              <div className="border-t border-stone-200 pt-4">
-                <div className="text-sm font-medium">Paiement d'inscription <span className="font-normal text-stone-400">· facultatif</span></div>
-                <div className="text-xs text-stone-500 mb-3">Frais d'inscription : {fmt(niv?.frais_inscription||0)} FCFA</div>
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <Field label="Versé maintenant (FCFA)"><input className={inputCls} value={verse} onChange={(e)=>setVerse(e.target.value.replace(/[^0-9]/g,""))} placeholder="0" /></Field>
-                  <Field label="Mode"><select className={inputCls} value={mode} onChange={(e)=>setMode(e.target.value)}>{MODES.map((m)=><option key={m}>{m}</option>)}</select></Field>
-                </div>
-                <div className="flex items-center justify-between bg-stone-50 rounded-lg px-3 py-2 border border-stone-200"><span className="text-sm text-stone-500">Reste dû sur l'inscription</span><span className="text-sm font-medium text-amber-700">{fmt(resteIns)} FCFA</span></div>
-              </div>
-              {err && <div className="text-sm text-red-600 mt-3">{err}</div>}
-              <button className={btnCls + " mt-4"} onClick={submit} disabled={busy}>{busy ? "Enregistrement…" : "Enregistrer l'élève"}</button>
-            </Card>
-          )}
-
-          {groups.length === 0 ? <Card className="p-5 text-sm text-stone-500">Aucun élève inscrit pour le moment.</Card> :
-            groups.map(({niv,list})=>{
-              const tR = list.reduce((s,e)=>s+situation(e.id).reste,0); const tV = list.reduce((s,e)=>s+situation(e.id).verse,0);
-              return (
-                <Card key={niv.id} className="p-5">
-                  <div className="flex items-center justify-between mb-3 flex-wrap gap-1">
-                    <div className="text-sm font-medium">{niv.libelle} · {list.length} élève{list.length>1?"s":""}</div>
-                    <div className="text-xs text-stone-500">Encaissé {fmt(tV)} · reste {fmt(tR)} FCFA</div>
-                  </div>
-                  <div className="divide-y divide-stone-100">
-                    {list.map((e)=>{ const s=situation(e.id); return (
-                      <div key={e.id} className="flex items-center justify-between py-2">
-                        <span className="text-sm">{e.nom_prenoms}</span>
-                        {s.reste===0 ? <span className="text-xs text-emerald-700">soldé</span> : <span className="text-sm text-amber-700">reste {fmt(s.reste)} FCFA</span>}
-                      </div>
-                    );})}
-                  </div>
-                </Card>
-              );
-            })}
-        </div>
-      );
-    }
-
-    function Paiement({ eleves, niveaux, situation, reload }) {
-      const [niveauId, setNiveauId] = useState(niveaux[0]?.id);
-      const list = eleves.filter((e)=>e.niveau_id===Number(niveauId));
-      const [eleveId, setEleveId] = useState(list[0]?.id);
-      const curId = list.find((e)=>e.id===Number(eleveId)) ? Number(eleveId) : list[0]?.id;
-      const s = curId ? situation(curId) : null;
-      const [type, setType] = useState("scolarite"); const [montant, setMontant] = useState(""); const [mode, setMode] = useState(MODES[0]);
-      const [busy, setBusy] = useState(false); const [ok, setOk] = useState(false); const [err, setErr] = useState("");
-
-      const submit = async () => {
-        const v = Number(montant)||0; if (!curId || v<=0) return;
-        setBusy(true); setErr("");
-        const { error } = await sb.from("paiement").insert({ eleve_id: curId, type, montant: v, date_paiement: today(), mode_paiement: mode });
-        setBusy(false);
-        if (error) { setErr(error.message); return; }
-        setMontant(""); setOk(true); setTimeout(()=>setOk(false),2000); await reload();
-      };
-
-      return (
-        <Card className="p-5">
-          <div className="text-base font-medium mb-4">Enregistrer un paiement</div>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <Field label="Niveau"><select className={inputCls} value={niveauId} onChange={(e)=>setNiveauId(e.target.value)}>{niveaux.map((n)=><option key={n.id} value={n.id}>{n.libelle}</option>)}</select></Field>
-            <Field label="Élève"><select className={inputCls} value={curId||""} onChange={(e)=>setEleveId(e.target.value)}>{list.length===0 && <option>—</option>}{list.map((e)=><option key={e.id} value={e.id}>{e.nom_prenoms}</option>)}</select></Field>
-          </div>
-          {s && <div className="mb-4"><SituationPanel s={s} /></div>}
-          <Field label="Type de paiement">
-            <div className="inline-flex gap-1 bg-stone-100 p-1 rounded-lg mb-4">
-              {[["inscription","Inscription"],["scolarite","Scolarité"]].map(([v,l])=>(
-                <button key={v} onClick={()=>setType(v)} className={`text-sm px-4 py-1.5 rounded-md ${type===v?"bg-emerald-800 text-white font-medium":"text-stone-500"}`}>{l}</button>
-              ))}
-            </div>
-          </Field>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <Field label="Montant (FCFA)"><input className={inputCls} value={montant} onChange={(e)=>setMontant(e.target.value.replace(/[^0-9]/g,""))} placeholder="50 000" /></Field>
-            <Field label="Mode"><select className={inputCls} value={mode} onChange={(e)=>setMode(e.target.value)}>{MODES.map((m)=><option key={m}>{m}</option>)}</select></Field>
-          </div>
-          {err && <div className="text-sm text-red-600 mb-3">{err}</div>}
-          <button className={btnCls} onClick={submit} disabled={!curId||busy}>{busy?"Enregistrement…":"Enregistrer le paiement"}</button>
-          {ok && <span className="ml-3 text-sm text-emerald-700">Enregistré · situation mise à jour</span>}
-        </Card>
-      );
-    }
-
-    function Charges({ charges, isStaff, anneeId, employes, reload }) {
-      const [kind, setKind] = useState("salaire"); const [label, setLabel] = useState(""); const [mois, setMois] = useState(MOIS[1]);
-      const [presta, setPresta] = useState(""); const [montant, setMontant] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
-
-      const submit = async () => {
-        const v = Number(montant)||0; if (v<=0 || !label.trim() || !anneeId) return;
-        setBusy(true); setErr("");
-        if (kind === "salaire") {
-          let emp = employes.find((e)=>e.poste.toLowerCase()===label.trim().toLowerCase());
-          if (!emp) { const { data, error } = await sb.from("employe").insert({ poste: label.trim() }).select().single(); if (error){setErr(error.message);setBusy(false);return;} emp = data; }
-          const { error } = await sb.from("salaire").insert({ annee_id: anneeId, employe_id: emp.id, mois, montant: v, date_paiement: today() });
-          if (error){setErr(error.message);setBusy(false);return;}
-        } else {
-          const { error } = await sb.from("charge_variable").insert({ annee_id: anneeId, date_charge: today(), prestataire: presta.trim(), designation: label.trim(), montant: v });
-          if (error){setErr(error.message);setBusy(false);return;}
+  <script>
+    if (bootCheck()) {
+/* ==== APPLICATION (pré-compilée, sans Babel) ==== */
+(() => {
+  const { useState, useEffect, useMemo } = React;
+  const SUPABASE_URL = "https://flhkokhrwogtmwlrqxyd.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_gUC1olBKyvlsubRDPlAOew_3tQNL9Vk";
+  const EMAIL_ACTIONNAIRES = "actionnaires@estrella.local";
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const fmt = (n) => new Intl.NumberFormat("fr-FR").format(Math.round(n || 0));
+  const today = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const MODES = ["Esp\xE8ces", "Mobile money", "Virement", "Ch\xE8que"];
+  const MOIS = ["Ao\xFBt", "Septembre", "Octobre", "Novembre", "D\xE9cembre", "Janvier", "F\xE9vrier", "Mars", "Avril", "Mai", "Juin", "Juillet"];
+  const inputCls = "w-full text-sm px-3 py-2 rounded-lg border border-stone-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/30";
+  const btnCls = "flex items-center justify-center gap-2 bg-emerald-800 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-emerald-900 disabled:opacity-40";
+  function Card({ children, className = "" }) {
+    return /* @__PURE__ */ React.createElement("div", { className: `bg-white rounded-xl border border-stone-200 ${className}` }, children);
+  }
+  function Field({ label, children }) {
+    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs text-stone-500 mb-1.5" }, label), children);
+  }
+  function Login() {
+    const [mode, setMode] = useState("staff");
+    const [email, setEmail] = useState("");
+    const [pw, setPw] = useState("");
+    const [err, setErr] = useState("");
+    const [busy, setBusy] = useState(false);
+    const submit = async () => {
+      setErr("");
+      setBusy(true);
+      const mail = mode === "actionnaire" ? EMAIL_ACTIONNAIRES : email.trim();
+      const { error } = await sb.auth.signInWithPassword({ email: mail, password: pw });
+      setBusy(false);
+      if (error) setErr("Identifiants incorrects. R\xE9essayez.");
+    };
+    return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen flex items-center justify-center px-4" }, /* @__PURE__ */ React.createElement(Card, { className: "p-6 w-full max-w-sm" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 mb-5" }, /* @__PURE__ */ React.createElement("div", { className: "w-10 h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold" }, "E"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-lg font-medium leading-tight" }, "Compta Estrella"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, "Suivi financier"))), mode === "staff" ? /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Email" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: email, onChange: (e) => setEmail(e.target.value), placeholder: "vous@estrella.local" })), /* @__PURE__ */ React.createElement(Field, { label: "Mot de passe" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, type: "password", value: pw, onChange: (e) => setPw(e.target.value), onKeyDown: (e) => e.key === "Enter" && submit() }))) : /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm text-stone-600 bg-stone-50 rounded-lg p-3 border border-stone-200" }, "Acc\xE8s actionnaires \u2014 saisissez simplement le mot de passe partag\xE9."), /* @__PURE__ */ React.createElement(Field, { label: "Mot de passe" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, type: "password", value: pw, onChange: (e) => setPw(e.target.value), onKeyDown: (e) => e.key === "Enter" && submit(), autoFocus: true }))), err && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-600 mt-3" }, err), /* @__PURE__ */ React.createElement("button", { className: btnCls + " w-full mt-4", onClick: submit, disabled: busy }, busy ? "Connexion\u2026" : "Se connecter"), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        className: "text-xs text-stone-500 hover:text-emerald-800 mt-4 w-full text-center",
+        onClick: () => {
+          setMode(mode === "staff" ? "actionnaire" : "staff");
+          setErr("");
+          setPw("");
         }
-        setLabel(""); setPresta(""); setMontant(""); setBusy(false); await reload();
+      },
+      mode === "staff" ? "Acc\xE8s actionnaires \u2192" : "\u2190 Acc\xE8s personnel (comptable / secr\xE9taire)"
+    )));
+  }
+  function App() {
+    const [session, setSession] = useState(void 0);
+    const [profile, setProfile] = useState(null);
+    const [data, setData] = useState(null);
+    const [tab, setTab] = useState("dashboard");
+    const [loading, setLoading] = useState(false);
+    useEffect(() => {
+      sb.auth.getSession().then(({ data: data2 }) => setSession(data2.session));
+      const { data: sub } = sb.auth.onAuthStateChange((_e, s) => setSession(s));
+      return () => sub.subscription.unsubscribe();
+    }, []);
+    const reload = async () => {
+      setLoading(true);
+      const q = (t) => sb.from(t).select("*").order("id");
+      const [an, ni, el, pa, em, sa, ch, pr] = await Promise.all([
+        q("annee_scolaire"),
+        q("niveau"),
+        q("eleve"),
+        q("paiement"),
+        q("employe"),
+        q("salaire"),
+        q("charge_variable"),
+        sb.from("profiles").select("role,nom").eq("id", session.user.id).single()
+      ]);
+      setProfile(pr.data);
+      setData({
+        annees: an.data || [],
+        niveaux: ni.data || [],
+        eleves: el.data || [],
+        paiements: pa.data || [],
+        employes: em.data || [],
+        salaires: sa.data || [],
+        chargesVar: ch.data || []
+      });
+      setLoading(false);
+    };
+    useEffect(() => {
+      if (session) reload();
+      else {
+        setProfile(null);
+        setData(null);
+      }
+    }, [session]);
+    if (session === void 0) return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen flex items-center justify-center text-stone-400" }, "Chargement\u2026");
+    if (!session) return /* @__PURE__ */ React.createElement(Login, null);
+    if (!data || !profile) return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen flex items-center justify-center text-stone-400" }, "Chargement des donn\xE9es\u2026");
+    const isStaff = ["admin", "comptable", "secretaire"].includes(profile.role);
+    const annee = data.annees.find((a) => a.statut === "active") || data.annees[0] || null;
+    const anneeId = annee == null ? void 0 : annee.id;
+    const niveaux = data.niveaux.filter((n) => n.annee_id === anneeId);
+    const posteOf = (id) => {
+      var _a;
+      return ((_a = data.employes.find((e) => e.id === id)) == null ? void 0 : _a.poste) || "\u2014";
+    };
+    const charges = [
+      ...data.salaires.filter((s) => s.annee_id === anneeId).map((s) => ({ id: "s" + s.id, kind: "salaire", label: posteOf(s.employe_id), mois: s.mois, montant: s.montant, date: s.date_paiement })),
+      ...data.chargesVar.filter((c) => c.annee_id === anneeId).map((c) => ({ id: "c" + c.id, kind: "depense", label: c.designation, presta: c.prestataire, montant: c.montant, date: c.date_charge }))
+    ];
+    const situation = (eleveId) => {
+      const el = data.eleves.find((e) => e.id === eleveId);
+      const niv = niveaux.find((n) => n.id === (el == null ? void 0 : el.niveau_id));
+      const insVerse = data.paiements.filter((p) => p.eleve_id === eleveId && p.type === "inscription").reduce((s, p) => s + p.montant, 0);
+      const scoVerse = data.paiements.filter((p) => p.eleve_id === eleveId && p.type === "scolarite").reduce((s, p) => s + p.montant, 0);
+      const du = ((niv == null ? void 0 : niv.frais_inscription) || 0) + ((niv == null ? void 0 : niv.frais_scolarite) || 0);
+      const verse = insVerse + scoVerse;
+      return {
+        niv,
+        insDu: (niv == null ? void 0 : niv.frais_inscription) || 0,
+        scoDu: (niv == null ? void 0 : niv.frais_scolarite) || 0,
+        insVerse,
+        scoVerse,
+        du,
+        verse,
+        reste: Math.max(0, du - verse),
+        resteIns: Math.max(0, ((niv == null ? void 0 : niv.frais_inscription) || 0) - insVerse),
+        resteSco: Math.max(0, ((niv == null ? void 0 : niv.frais_scolarite) || 0) - scoVerse)
       };
+    };
+    const elevesAnnee = data.eleves.filter((e) => niveaux.some((n) => n.id === e.niveau_id));
+    const metrics = (() => {
+      const encaisse = data.paiements.filter((p) => elevesAnnee.some((e) => e.id === p.eleve_id)).reduce((s, p) => s + p.montant, 0);
+      const prevision = elevesAnnee.reduce((s, e) => {
+        const n = niveaux.find((x) => x.id === e.niveau_id);
+        return s + (n ? n.frais_inscription + n.frais_scolarite : 0);
+      }, 0);
+      const salaires = charges.filter((c) => c.kind === "salaire").reduce((s, c) => s + c.montant, 0);
+      const autres = charges.filter((c) => c.kind === "depense").reduce((s, c) => s + c.montant, 0);
+      const totalCharges = salaires + autres;
+      return {
+        encaisse,
+        prevision,
+        reste: Math.max(0, prevision - encaisse),
+        salaires,
+        autres,
+        totalCharges,
+        solde: encaisse - totalCharges,
+        nbEleves: elevesAnnee.length,
+        taux: prevision > 0 ? Math.round(encaisse / prevision * 100) : 0
+      };
+    })();
+    const TABS = [
+      { id: "dashboard", label: "Tableau de bord", read: true },
+      { id: "eleves", label: "\xC9l\xE8ves", read: true },
+      { id: "paiement", label: "Paiement", staff: true },
+      { id: "charges", label: "Charges", read: true },
+      { id: "rapports", label: "Rapports", read: true },
+      { id: "config", label: "Configuration", staff: true }
+    ];
+    const visible = TABS.filter((t) => isStaff ? true : t.read);
+    const active = visible.some((t) => t.id === tab) ? tab : "dashboard";
+    const logout = () => sb.auth.signOut();
+    return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen" }, /* @__PURE__ */ React.createElement("div", { className: "max-w-5xl mx-auto px-4 py-6" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-3 flex-wrap mb-5" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "w-10 h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold" }, "E"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-lg font-medium leading-tight" }, "Compta Estrella"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, annee ? "Ann\xE9e " + annee.libelle : "Aucune ann\xE9e active"))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 text-xs text-stone-500" }, /* @__PURE__ */ React.createElement("span", null, isStaff ? profile.nom || "Staff" : "Actionnaire \u2014 lecture seule"), /* @__PURE__ */ React.createElement("button", { onClick: logout, className: "px-3 py-1.5 rounded-lg border border-stone-300 hover:bg-white" }, "D\xE9connexion"))), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1 mb-5 overflow-x-auto pb-1" }, visible.map((t) => /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        key: t.id,
+        onClick: () => setTab(t.id),
+        className: `text-sm px-3 py-2 rounded-lg border whitespace-nowrap shrink-0 ${active === t.id ? "bg-white border-stone-300 font-medium" : "border-transparent text-stone-500 hover:bg-white/60"}`
+      },
+      t.label
+    ))), loading && /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-400 mb-3" }, "Mise \xE0 jour\u2026"), !annee && isStaff && active !== "config" && /* @__PURE__ */ React.createElement(Card, { className: "p-5 mb-3 text-sm" }, "Aucune ann\xE9e scolaire n'existe encore. Allez dans ", /* @__PURE__ */ React.createElement("b", null, "Configuration"), " pour cr\xE9er l'ann\xE9e et les niveaux."), active === "dashboard" && /* @__PURE__ */ React.createElement(Dashboard, { m: metrics }), active === "eleves" && /* @__PURE__ */ React.createElement(Eleves, { eleves: elevesAnnee, niveaux, situation, isStaff, anneeId, reload }), active === "paiement" && isStaff && /* @__PURE__ */ React.createElement(Paiement, { eleves: elevesAnnee, niveaux, situation, reload }), active === "charges" && /* @__PURE__ */ React.createElement(Charges, { charges, isStaff, anneeId, employes: data.employes, reload }), active === "rapports" && /* @__PURE__ */ React.createElement(Rapports, { eleves: elevesAnnee, niveaux, situation, charges, metrics }), active === "config" && isStaff && /* @__PURE__ */ React.createElement(Config, { annee, niveaux, reload }), /* @__PURE__ */ React.createElement("p", { className: "text-center text-xs text-stone-400 mt-8" }, "Compta Estrella \xB7 ", annee ? annee.libelle : "")));
+  }
+  function Dashboard({ m }) {
+    const kpis = [
+      { label: "Revenus encaiss\xE9s", val: m.encaisse, unit: "FCFA" },
+      { label: "Charges", val: m.totalCharges, unit: "FCFA" },
+      { label: "Solde (tr\xE9sorerie)", val: m.solde, unit: "FCFA", pos: true },
+      { label: "\xC9l\xE8ves inscrits", val: m.nbEleves, unit: "\xE9l\xE8ves", plain: true }
+    ];
+    const salPct = m.totalCharges ? Math.round(m.salaires / m.totalCharges * 100) : 0;
+    return /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3" }, kpis.map((k) => /* @__PURE__ */ React.createElement("div", { key: k.label, className: "bg-stone-50 rounded-xl p-4 border border-stone-200" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500 mb-1" }, k.label), /* @__PURE__ */ React.createElement("div", { className: `text-xl sm:text-2xl font-medium ${k.pos ? "text-emerald-800" : ""}` }, k.pos && m.solde >= 0 ? "+" : "", k.plain ? m.nbEleves : fmt(k.val)), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-400 mt-0.5" }, k.unit)))), /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-baseline justify-between mb-2 flex-wrap gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-medium" }, "Taux de recouvrement"), /* @__PURE__ */ React.createElement("span", { className: "text-sm text-stone-500" }, fmt(m.encaisse), " sur ", fmt(m.prevision), " pr\xE9vus")), /* @__PURE__ */ React.createElement("div", { className: "h-3 rounded-full bg-stone-100 overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "h-full bg-emerald-700 rounded-full", style: { width: `${Math.min(100, m.taux)}%` } })), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between mt-2 flex-wrap gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-medium text-emerald-800" }, m.taux, " % recouvr\xE9"), /* @__PURE__ */ React.createElement("span", { className: "text-sm text-amber-700" }, "Reste \xE0 recouvrer : ", fmt(m.reste), " FCFA"))), /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium mb-4" }, "R\xE9partition des charges"), [{ l: "Salaires", v: m.salaires, p: salPct, c: "bg-emerald-700" }, { l: "Autres charges", v: m.autres, p: m.totalCharges ? 100 - salPct : 0, c: "bg-teal-500" }].map((r) => /* @__PURE__ */ React.createElement("div", { key: r.l, className: "mb-3 last:mb-0" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-sm mb-1.5" }, /* @__PURE__ */ React.createElement("span", { className: "text-stone-500" }, r.l), /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, fmt(r.v), " FCFA \xB7 ", r.p, " %")), /* @__PURE__ */ React.createElement("div", { className: "h-2.5 rounded-full bg-stone-100 overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: `h-full rounded-full ${r.c}`, style: { width: `${r.p}%` } }))))));
+  }
+  function SituationPanel({ s }) {
+    if (!s) return null;
+    const soldee = s.reste === 0;
+    return /* @__PURE__ */ React.createElement("div", { className: "bg-stone-50 rounded-lg p-3 border border-stone-200" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500 mb-2" }, "Situation de l'\xE9l\xE8ve", soldee && /* @__PURE__ */ React.createElement("span", { className: "ml-1 text-emerald-700 font-medium" }, "\xB7 sold\xE9e")), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-3 gap-3 text-sm" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, "Inscription"), /* @__PURE__ */ React.createElement("div", { className: "font-medium" }, fmt(s.insVerse), " / ", fmt(s.insDu)), s.resteIns > 0 && /* @__PURE__ */ React.createElement("div", { className: "text-xs text-amber-700" }, "reste ", fmt(s.resteIns))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, "Scolarit\xE9"), /* @__PURE__ */ React.createElement("div", { className: "font-medium" }, fmt(s.scoVerse), " / ", fmt(s.scoDu)), s.resteSco > 0 && /* @__PURE__ */ React.createElement("div", { className: "text-xs text-amber-700" }, "reste ", fmt(s.resteSco))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, "Reste \xE0 payer"), /* @__PURE__ */ React.createElement("div", { className: `font-medium ${soldee ? "text-emerald-800" : "text-amber-700"}` }, fmt(s.reste), " FCFA"))));
+  }
+  function Eleves({ eleves, niveaux, situation, isStaff, anneeId, reload }) {
+    var _a;
+    const [nom, setNom] = useState("");
+    const [naissance, setNaissance] = useState("");
+    const [niveauId, setNiveauId] = useState((_a = niveaux[0]) == null ? void 0 : _a.id);
+    const [verse, setVerse] = useState("");
+    const [mode, setMode] = useState(MODES[0]);
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState("");
+    const niv = niveaux.find((n) => n.id === Number(niveauId));
+    const resteIns = Math.max(0, ((niv == null ? void 0 : niv.frais_inscription) || 0) - (Number(verse) || 0));
+    const submit = async () => {
+      if (!nom.trim() || !niveauId) return;
+      setBusy(true);
+      setErr("");
+      const { data: el, error } = await sb.from("eleve").insert({ niveau_id: Number(niveauId), nom_prenoms: nom.trim(), date_naissance: naissance || null }).select().single();
+      if (error) {
+        setErr(error.message);
+        setBusy(false);
+        return;
+      }
+      const v = Number(verse) || 0;
+      if (v > 0) {
+        await sb.from("paiement").insert({ eleve_id: el.id, type: "inscription", montant: v, date_paiement: today(), mode_paiement: mode });
+      }
+      setNom("");
+      setNaissance("");
+      setVerse("");
+      setBusy(false);
+      await reload();
+    };
+    const groups = niveaux.map((n) => ({ niv: n, list: eleves.filter((e) => e.niveau_id === n.id) })).filter((g) => g.list.length > 0);
+    return /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, isStaff && /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-base font-medium mb-4" }, "Ajouter un \xE9l\xE8ve"), /* @__PURE__ */ React.createElement("div", { className: "mb-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Nom & pr\xE9noms" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: nom, onChange: (e) => setNom(e.target.value), placeholder: "Ex. Traor\xE9 Zoumana" }))), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ React.createElement(Field, { label: "Date de naissance" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, type: "date", value: naissance, onChange: (e) => setNaissance(e.target.value) })), /* @__PURE__ */ React.createElement(Field, { label: "Niveau" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: niveauId, onChange: (e) => setNiveauId(e.target.value) }, niveaux.map((n) => /* @__PURE__ */ React.createElement("option", { key: n.id, value: n.id }, n.libelle))))), /* @__PURE__ */ React.createElement("div", { className: "border-t border-stone-200 pt-4" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium" }, "Paiement d'inscription ", /* @__PURE__ */ React.createElement("span", { className: "font-normal text-stone-400" }, "\xB7 facultatif")), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500 mb-3" }, "Frais d'inscription : ", fmt((niv == null ? void 0 : niv.frais_inscription) || 0), " FCFA"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3 mb-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Vers\xE9 maintenant (FCFA)" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: verse, onChange: (e) => setVerse(e.target.value.replace(/[^0-9]/g, "")), placeholder: "0" })), /* @__PURE__ */ React.createElement(Field, { label: "Mode" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: mode, onChange: (e) => setMode(e.target.value) }, MODES.map((m) => /* @__PURE__ */ React.createElement("option", { key: m }, m))))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between bg-stone-50 rounded-lg px-3 py-2 border border-stone-200" }, /* @__PURE__ */ React.createElement("span", { className: "text-sm text-stone-500" }, "Reste d\xFB sur l'inscription"), /* @__PURE__ */ React.createElement("span", { className: "text-sm font-medium text-amber-700" }, fmt(resteIns), " FCFA"))), err && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-600 mt-3" }, err), /* @__PURE__ */ React.createElement("button", { className: btnCls + " mt-4", onClick: submit, disabled: busy }, busy ? "Enregistrement\u2026" : "Enregistrer l'\xE9l\xE8ve")), groups.length === 0 ? /* @__PURE__ */ React.createElement(Card, { className: "p-5 text-sm text-stone-500" }, "Aucun \xE9l\xE8ve inscrit pour le moment.") : groups.map(({ niv: niv2, list }) => {
+      const tR = list.reduce((s, e) => s + situation(e.id).reste, 0);
+      const tV = list.reduce((s, e) => s + situation(e.id).verse, 0);
+      return /* @__PURE__ */ React.createElement(Card, { key: niv2.id, className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-3 flex-wrap gap-1" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium" }, niv2.libelle, " \xB7 ", list.length, " \xE9l\xE8ve", list.length > 1 ? "s" : ""), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, "Encaiss\xE9 ", fmt(tV), " \xB7 reste ", fmt(tR), " FCFA")), /* @__PURE__ */ React.createElement("div", { className: "divide-y divide-stone-100" }, list.map((e) => {
+        const s = situation(e.id);
+        return /* @__PURE__ */ React.createElement("div", { key: e.id, className: "flex items-center justify-between py-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-sm" }, e.nom_prenoms), s.reste === 0 ? /* @__PURE__ */ React.createElement("span", { className: "text-xs text-emerald-700" }, "sold\xE9") : /* @__PURE__ */ React.createElement("span", { className: "text-sm text-amber-700" }, "reste ", fmt(s.reste), " FCFA"));
+      })));
+    }));
+  }
+  function Paiement({ eleves, niveaux, situation, reload }) {
+    var _a, _b, _c;
+    const [niveauId, setNiveauId] = useState((_a = niveaux[0]) == null ? void 0 : _a.id);
+    const list = eleves.filter((e) => e.niveau_id === Number(niveauId));
+    const [eleveId, setEleveId] = useState((_b = list[0]) == null ? void 0 : _b.id);
+    const curId = list.find((e) => e.id === Number(eleveId)) ? Number(eleveId) : (_c = list[0]) == null ? void 0 : _c.id;
+    const s = curId ? situation(curId) : null;
+    const [type, setType] = useState("scolarite");
+    const [montant, setMontant] = useState("");
+    const [mode, setMode] = useState(MODES[0]);
+    const [busy, setBusy] = useState(false);
+    const [ok, setOk] = useState(false);
+    const [err, setErr] = useState("");
+    const submit = async () => {
+      const v = Number(montant) || 0;
+      if (!curId || v <= 0) return;
+      setBusy(true);
+      setErr("");
+      const { error } = await sb.from("paiement").insert({ eleve_id: curId, type, montant: v, date_paiement: today(), mode_paiement: mode });
+      setBusy(false);
+      if (error) {
+        setErr(error.message);
+        return;
+      }
+      setMontant("");
+      setOk(true);
+      setTimeout(() => setOk(false), 2e3);
+      await reload();
+    };
+    return /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-base font-medium mb-4" }, "Enregistrer un paiement"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ React.createElement(Field, { label: "Niveau" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: niveauId, onChange: (e) => setNiveauId(e.target.value) }, niveaux.map((n) => /* @__PURE__ */ React.createElement("option", { key: n.id, value: n.id }, n.libelle)))), /* @__PURE__ */ React.createElement(Field, { label: "\xC9l\xE8ve" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: curId || "", onChange: (e) => setEleveId(e.target.value) }, list.length === 0 && /* @__PURE__ */ React.createElement("option", null, "\u2014"), list.map((e) => /* @__PURE__ */ React.createElement("option", { key: e.id, value: e.id }, e.nom_prenoms))))), s && /* @__PURE__ */ React.createElement("div", { className: "mb-4" }, /* @__PURE__ */ React.createElement(SituationPanel, { s })), /* @__PURE__ */ React.createElement(Field, { label: "Type de paiement" }, /* @__PURE__ */ React.createElement("div", { className: "inline-flex gap-1 bg-stone-100 p-1 rounded-lg mb-4" }, [["inscription", "Inscription"], ["scolarite", "Scolarit\xE9"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setType(v), className: `text-sm px-4 py-1.5 rounded-md ${type === v ? "bg-emerald-800 text-white font-medium" : "text-stone-500"}` }, l)))), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ React.createElement(Field, { label: "Montant (FCFA)" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: montant, onChange: (e) => setMontant(e.target.value.replace(/[^0-9]/g, "")), placeholder: "50 000" })), /* @__PURE__ */ React.createElement(Field, { label: "Mode" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: mode, onChange: (e) => setMode(e.target.value) }, MODES.map((m) => /* @__PURE__ */ React.createElement("option", { key: m }, m))))), err && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-600 mb-3" }, err), /* @__PURE__ */ React.createElement("button", { className: btnCls, onClick: submit, disabled: !curId || busy }, busy ? "Enregistrement\u2026" : "Enregistrer le paiement"), ok && /* @__PURE__ */ React.createElement("span", { className: "ml-3 text-sm text-emerald-700" }, "Enregistr\xE9 \xB7 situation mise \xE0 jour"));
+  }
+  function Charges({ charges, isStaff, anneeId, employes, reload }) {
+    const [kind, setKind] = useState("salaire");
+    const [label, setLabel] = useState("");
+    const [mois, setMois] = useState(MOIS[1]);
+    const [presta, setPresta] = useState("");
+    const [montant, setMontant] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState("");
+    const submit = async () => {
+      const v = Number(montant) || 0;
+      if (v <= 0 || !label.trim() || !anneeId) return;
+      setBusy(true);
+      setErr("");
+      if (kind === "salaire") {
+        let emp = employes.find((e) => e.poste.toLowerCase() === label.trim().toLowerCase());
+        if (!emp) {
+          const { data, error: error2 } = await sb.from("employe").insert({ poste: label.trim() }).select().single();
+          if (error2) {
+            setErr(error2.message);
+            setBusy(false);
+            return;
+          }
+          emp = data;
+        }
+        const { error } = await sb.from("salaire").insert({ annee_id: anneeId, employe_id: emp.id, mois, montant: v, date_paiement: today() });
+        if (error) {
+          setErr(error.message);
+          setBusy(false);
+          return;
+        }
+      } else {
+        const { error } = await sb.from("charge_variable").insert({ annee_id: anneeId, date_charge: today(), prestataire: presta.trim(), designation: label.trim(), montant: v });
+        if (error) {
+          setErr(error.message);
+          setBusy(false);
+          return;
+        }
+      }
+      setLabel("");
+      setPresta("");
+      setMontant("");
+      setBusy(false);
+      await reload();
+    };
+    const salaires = charges.filter((c) => c.kind === "salaire");
+    const depenses = charges.filter((c) => c.kind === "depense");
+    const sum = (a) => a.reduce((s, c) => s + c.montant, 0);
+    const Section = ({ title, rows, sub }) => /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium" }, title), /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium" }, fmt(sub), " FCFA")), /* @__PURE__ */ React.createElement("div", { className: "divide-y divide-stone-100" }, rows.map((c) => /* @__PURE__ */ React.createElement("div", { key: c.id, className: "flex items-center justify-between py-2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm" }, c.label), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, c.kind === "salaire" ? c.mois : c.presta || "\u2014", " \xB7 ", c.date || "")), /* @__PURE__ */ React.createElement("div", { className: "text-sm" }, fmt(c.montant), " FCFA"))), rows.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-stone-400 py-2" }, "Aucune charge")));
+    return /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, isStaff && /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-base font-medium mb-4" }, "Enregistrer une charge"), /* @__PURE__ */ React.createElement("div", { className: "inline-flex gap-1 bg-stone-100 p-1 rounded-lg mb-4" }, [["salaire", "Salaire"], ["depense", "D\xE9pense"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setKind(v), className: `text-sm px-4 py-1.5 rounded-md ${kind === v ? "bg-emerald-800 text-white font-medium" : "text-stone-500"}` }, l))), kind === "salaire" ? /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-3 gap-3 mb-4" }, /* @__PURE__ */ React.createElement(Field, { label: "Employ\xE9 / poste" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: label, onChange: (e) => setLabel(e.target.value), placeholder: "Ex. Gardien" })), /* @__PURE__ */ React.createElement(Field, { label: "Mois" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: mois, onChange: (e) => setMois(e.target.value) }, MOIS.map((m) => /* @__PURE__ */ React.createElement("option", { key: m }, m)))), /* @__PURE__ */ React.createElement(Field, { label: "Montant (FCFA)" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: montant, onChange: (e) => setMontant(e.target.value.replace(/[^0-9]/g, "")), placeholder: "60 000" }))) : /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-3 gap-3 mb-4" }, /* @__PURE__ */ React.createElement(Field, { label: "D\xE9signation" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: label, onChange: (e) => setLabel(e.target.value), placeholder: "Ex. Cartouche" })), /* @__PURE__ */ React.createElement(Field, { label: "Prestataire" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: presta, onChange: (e) => setPresta(e.target.value), placeholder: "Fournisseur" })), /* @__PURE__ */ React.createElement(Field, { label: "Montant (FCFA)" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: montant, onChange: (e) => setMontant(e.target.value.replace(/[^0-9]/g, "")), placeholder: "12 000" }))), err && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-600 mb-3" }, err), /* @__PURE__ */ React.createElement("button", { className: btnCls, onClick: submit, disabled: busy }, busy ? "Enregistrement\u2026" : "Enregistrer la charge")), /* @__PURE__ */ React.createElement(Section, { title: "Salaires", rows: salaires, sub: sum(salaires) }), /* @__PURE__ */ React.createElement(Section, { title: "Autres charges", rows: depenses, sub: sum(depenses) }));
+  }
+  function Rapports({ eleves, niveaux, situation, charges, metrics }) {
+    const [mois, setMois] = useState("Tous");
+    const dl = (rows, sheet, file) => {
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, sheet);
+      XLSX.writeFile(wb, file);
+    };
+    const monthOf = (c) => c.kind === "salaire" ? c.mois : { "01": "Janvier", "02": "F\xE9vrier", "03": "Mars", "04": "Avril", "05": "Mai", "06": "Juin", "07": "Juillet", "08": "Ao\xFBt", "09": "Septembre", "10": "Octobre", "11": "Novembre", "12": "D\xE9cembre" }[(c.date || "").slice(5, 7)] || "\u2014";
+    const exportBilan = () => {
+      const m = metrics;
+      dl([["Compta Estrella \u2014 Bilan financier"], [], ["Indicateur", "Montant (FCFA)"], ["Revenus encaiss\xE9s", m.encaisse], ["Pr\xE9vision", m.prevision], ["Reste \xE0 recouvrer", m.reste], ["Taux de recouvrement (%)", m.taux], ["Salaires", m.salaires], ["Autres charges", m.autres], ["Total charges", m.totalCharges], ["Solde", m.solde], ["Nombre d'\xE9l\xE8ves", m.nbEleves]], "Bilan", "bilan_financier.xlsx");
+    };
+    const exportEleves = () => {
+      const rows = [["Niveau", "Nom & pr\xE9noms", "Inscription vers\xE9e", "Scolarit\xE9 vers\xE9e", "Total d\xFB", "Reste \xE0 payer"]];
+      niveaux.forEach((n) => eleves.filter((e) => e.niveau_id === n.id).forEach((e) => {
+        const s = situation(e.id);
+        rows.push([n.libelle, e.nom_prenoms, s.insVerse, s.scoVerse, s.du, s.reste]);
+      }));
+      dl(rows, "\xC9l\xE8ves", "liste_eleves.xlsx");
+    };
+    const filt = charges.filter((c) => mois === "Tous" || monthOf(c) === mois);
+    const exportCharges = () => {
+      const rows = [["Type", "Libell\xE9", "Mois / prestataire", "Date", "Montant (FCFA)"]];
+      filt.forEach((c) => rows.push([c.kind === "salaire" ? "Salaire" : "D\xE9pense", c.label, c.kind === "salaire" ? c.mois : c.presta || "\u2014", c.date || "", c.montant]));
+      dl(rows, "Charges", `charges_${mois === "Tous" ? "toutes" : mois.toLowerCase()}.xlsx`);
+    };
+    const exportSalaries = () => {
+      const rows = [["Poste", "Mois", "Montant (FCFA)", "Date"]];
+      charges.filter((c) => c.kind === "salaire").forEach((c) => rows.push([c.label, c.mois, c.montant, c.date || ""]));
+      dl(rows, "Salari\xE9s", "liste_salaries.xlsx");
+    };
+    const Item = ({ title, desc, onClick, extra }) => /* @__PURE__ */ React.createElement(Card, { className: "p-4 flex items-center justify-between gap-3 flex-wrap" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium" }, title), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, desc)), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 w-full sm:w-auto justify-end" }, extra, /* @__PURE__ */ React.createElement("button", { className: btnCls + " py-1.5", onClick }, "Excel")));
+    return /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement(Item, { title: "Bilan financier", desc: "Synth\xE8se : revenus, charges, solde, recouvrement", onClick: exportBilan }), /* @__PURE__ */ React.createElement(Item, { title: "Liste des \xE9l\xE8ves par niveau", desc: "Chaque \xE9l\xE8ve avec vers\xE9 et reste \xE0 payer", onClick: exportEleves }), /* @__PURE__ */ React.createElement(
+      Item,
+      {
+        title: "Charges du mois",
+        desc: `${filt.length} ligne(s)`,
+        onClick: exportCharges,
+        extra: /* @__PURE__ */ React.createElement("select", { className: "text-sm px-3 py-2 rounded-lg border border-stone-300 bg-white flex-1 sm:flex-none sm:w-44", value: mois, onChange: (e) => setMois(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "Tous" }, "Tous les mois"), MOIS.map((m) => /* @__PURE__ */ React.createElement("option", { key: m }, m)))
+      }
+    ), /* @__PURE__ */ React.createElement(Item, { title: "Liste des salari\xE9s", desc: "Postes et salaires vers\xE9s", onClick: exportSalaries }));
+  }
+  function Config({ annee, niveaux, reload }) {
+    const [libelle, setLibelle] = useState("2025/2026");
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState("");
+    const [nl, setNl] = useState("");
+    const [ni, setNi] = useState("30000");
+    const [ns, setNs] = useState("");
+    const creerAnnee = async () => {
+      setBusy(true);
+      setErr("");
+      const { error } = await sb.from("annee_scolaire").insert({ libelle: libelle.trim(), statut: "active" });
+      setBusy(false);
+      if (error) setErr(error.message);
+      else reload();
+    };
+    const addNiveau = async () => {
+      if (!nl.trim() || !annee) return;
+      setBusy(true);
+      setErr("");
+      const { error } = await sb.from("niveau").insert({ annee_id: annee.id, libelle: nl.trim(), frais_inscription: Number(ni) || 0, frais_scolarite: Number(ns) || 0 });
+      setBusy(false);
+      if (error) setErr(error.message);
+      else {
+        setNl("");
+        setNs("");
+        reload();
+      }
+    };
+    const delNiveau = async (id) => {
+      await sb.from("niveau").delete().eq("id", id);
+      reload();
+    };
+    if (!annee) return /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-base font-medium mb-3" }, "Cr\xE9er l'ann\xE9e scolaire"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-stone-500 mb-3" }, "Aucune ann\xE9e n'existe. Cr\xE9ez-la pour d\xE9marrer."), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2 items-end" }, /* @__PURE__ */ React.createElement(Field, { label: "Libell\xE9" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: libelle, onChange: (e) => setLibelle(e.target.value) })), /* @__PURE__ */ React.createElement("button", { className: btnCls, onClick: creerAnnee, disabled: busy }, "Cr\xE9er")), err && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-600 mt-3" }, err));
+    return /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-base font-medium mb-1" }, "Niveaux \u2014 ann\xE9e ", annee.libelle), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-stone-500 mb-4" }, "Total d\xFB par \xE9l\xE8ve = inscription + scolarit\xE9."), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-12 gap-2 items-end mb-4" }, /* @__PURE__ */ React.createElement("div", { className: "col-span-5" }, /* @__PURE__ */ React.createElement(Field, { label: "Niveau" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: nl, onChange: (e) => setNl(e.target.value), placeholder: "Ex. 6e" }))), /* @__PURE__ */ React.createElement("div", { className: "col-span-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Inscription" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: ni, onChange: (e) => setNi(e.target.value.replace(/[^0-9]/g, "")) }))), /* @__PURE__ */ React.createElement("div", { className: "col-span-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Scolarit\xE9" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: ns, onChange: (e) => setNs(e.target.value.replace(/[^0-9]/g, "")), placeholder: "85000" }))), /* @__PURE__ */ React.createElement("div", { className: "col-span-1" }, /* @__PURE__ */ React.createElement("button", { className: btnCls + " w-full px-0", onClick: addNiveau, disabled: busy }, "+"))), err && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-600 mb-3" }, err), /* @__PURE__ */ React.createElement("div", { className: "divide-y divide-stone-100" }, niveaux.map((n) => /* @__PURE__ */ React.createElement("div", { key: n.id, className: "flex items-center justify-between py-2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-medium" }, n.libelle), /* @__PURE__ */ React.createElement("span", { className: "text-xs text-stone-500 ml-2" }, "insc. ", fmt(n.frais_inscription), " \xB7 scol. ", fmt(n.frais_scolarite))), /* @__PURE__ */ React.createElement("button", { className: "text-xs text-stone-400 hover:text-red-600", onClick: () => delNiveau(n.id) }, "Supprimer"))), niveaux.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-stone-400 py-2" }, "Aucun niveau. Ajoutez-en ci-dessus.")));
+  }
+  ReactDOM.createRoot(document.getElementById("root")).render(/* @__PURE__ */ React.createElement(App, null));
+})();
 
-      const salaires = charges.filter((c)=>c.kind==="salaire"); const depenses = charges.filter((c)=>c.kind==="depense");
-      const sum = (a)=>a.reduce((s,c)=>s+c.montant,0);
-      const Section = ({title,rows,sub}) => (
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-3"><div className="text-sm font-medium">{title}</div><div className="text-sm font-medium">{fmt(sub)} FCFA</div></div>
-          <div className="divide-y divide-stone-100">
-            {rows.map((c)=>(
-              <div key={c.id} className="flex items-center justify-between py-2">
-                <div><div className="text-sm">{c.label}</div><div className="text-xs text-stone-500">{c.kind==="salaire"?c.mois:(c.presta||"—")} · {c.date||""}</div></div>
-                <div className="text-sm">{fmt(c.montant)} FCFA</div>
-              </div>
-            ))}
-            {rows.length===0 && <div className="text-sm text-stone-400 py-2">Aucune charge</div>}
-          </div>
-        </Card>
-      );
-
-      return (
-        <div className="space-y-3">
-          {isStaff && (
-            <Card className="p-5">
-              <div className="text-base font-medium mb-4">Enregistrer une charge</div>
-              <div className="inline-flex gap-1 bg-stone-100 p-1 rounded-lg mb-4">
-                {[["salaire","Salaire"],["depense","Dépense"]].map(([v,l])=>(<button key={v} onClick={()=>setKind(v)} className={`text-sm px-4 py-1.5 rounded-md ${kind===v?"bg-emerald-800 text-white font-medium":"text-stone-500"}`}>{l}</button>))}
-              </div>
-              {kind==="salaire" ? (
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  <Field label="Employé / poste"><input className={inputCls} value={label} onChange={(e)=>setLabel(e.target.value)} placeholder="Ex. Gardien" /></Field>
-                  <Field label="Mois"><select className={inputCls} value={mois} onChange={(e)=>setMois(e.target.value)}>{MOIS.map((m)=><option key={m}>{m}</option>)}</select></Field>
-                  <Field label="Montant (FCFA)"><input className={inputCls} value={montant} onChange={(e)=>setMontant(e.target.value.replace(/[^0-9]/g,""))} placeholder="60 000" /></Field>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  <Field label="Désignation"><input className={inputCls} value={label} onChange={(e)=>setLabel(e.target.value)} placeholder="Ex. Cartouche" /></Field>
-                  <Field label="Prestataire"><input className={inputCls} value={presta} onChange={(e)=>setPresta(e.target.value)} placeholder="Fournisseur" /></Field>
-                  <Field label="Montant (FCFA)"><input className={inputCls} value={montant} onChange={(e)=>setMontant(e.target.value.replace(/[^0-9]/g,""))} placeholder="12 000" /></Field>
-                </div>
-              )}
-              {err && <div className="text-sm text-red-600 mb-3">{err}</div>}
-              <button className={btnCls} onClick={submit} disabled={busy}>{busy?"Enregistrement…":"Enregistrer la charge"}</button>
-            </Card>
-          )}
-          <Section title="Salaires" rows={salaires} sub={sum(salaires)} />
-          <Section title="Autres charges" rows={depenses} sub={sum(depenses)} />
-        </div>
-      );
     }
-
-    function Rapports({ eleves, niveaux, situation, charges, metrics }) {
-      const [mois, setMois] = useState("Tous");
-      const dl = (rows, sheet, file) => { const ws=XLSX.utils.aoa_to_sheet(rows); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,sheet); XLSX.writeFile(wb,file); };
-      const monthOf = (c) => c.kind==="salaire" ? c.mois : (({"01":"Janvier","02":"Février","03":"Mars","04":"Avril","05":"Mai","06":"Juin","07":"Juillet","08":"Août","09":"Septembre","10":"Octobre","11":"Novembre","12":"Décembre"})[(c.date||"").slice(5,7)] || "—");
-
-      const exportBilan = () => { const m=metrics; dl([["Compta Estrella — Bilan financier"],[],["Indicateur","Montant (FCFA)"],["Revenus encaissés",m.encaisse],["Prévision",m.prevision],["Reste à recouvrer",m.reste],["Taux de recouvrement (%)",m.taux],["Salaires",m.salaires],["Autres charges",m.autres],["Total charges",m.totalCharges],["Solde",m.solde],["Nombre d'élèves",m.nbEleves]],"Bilan","bilan_financier.xlsx"); };
-      const exportEleves = () => { const rows=[["Niveau","Nom & prénoms","Inscription versée","Scolarité versée","Total dû","Reste à payer"]]; niveaux.forEach((n)=>eleves.filter((e)=>e.niveau_id===n.id).forEach((e)=>{const s=situation(e.id);rows.push([n.libelle,e.nom_prenoms,s.insVerse,s.scoVerse,s.du,s.reste]);})); dl(rows,"Élèves","liste_eleves.xlsx"); };
-      const filt = charges.filter((c)=>mois==="Tous"||monthOf(c)===mois);
-      const exportCharges = () => { const rows=[["Type","Libellé","Mois / prestataire","Date","Montant (FCFA)"]]; filt.forEach((c)=>rows.push([c.kind==="salaire"?"Salaire":"Dépense",c.label,c.kind==="salaire"?c.mois:(c.presta||"—"),c.date||"",c.montant])); dl(rows,"Charges",`charges_${mois==="Tous"?"toutes":mois.toLowerCase()}.xlsx`); };
-      const exportSalaries = () => { const rows=[["Poste","Mois","Montant (FCFA)","Date"]]; charges.filter((c)=>c.kind==="salaire").forEach((c)=>rows.push([c.label,c.mois,c.montant,c.date||""])); dl(rows,"Salariés","liste_salaries.xlsx"); };
-
-      const Item = ({title,desc,onClick,extra}) => (
-        <Card className="p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div><div className="text-sm font-medium">{title}</div><div className="text-xs text-stone-500">{desc}</div></div>
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">{extra}<button className={btnCls + " py-1.5"} onClick={onClick}>Excel</button></div>
-        </Card>
-      );
-      return (
-        <div className="space-y-3">
-          <Item title="Bilan financier" desc="Synthèse : revenus, charges, solde, recouvrement" onClick={exportBilan} />
-          <Item title="Liste des élèves par niveau" desc="Chaque élève avec versé et reste à payer" onClick={exportEleves} />
-          <Item title="Charges du mois" desc={`${filt.length} ligne(s)`} onClick={exportCharges}
-            extra={<select className="text-sm px-3 py-2 rounded-lg border border-stone-300 bg-white flex-1 sm:flex-none sm:w-44" value={mois} onChange={(e)=>setMois(e.target.value)}><option value="Tous">Tous les mois</option>{MOIS.map((m)=><option key={m}>{m}</option>)}</select>} />
-          <Item title="Liste des salariés" desc="Postes et salaires versés" onClick={exportSalaries} />
-        </div>
-      );
-    }
-
-    function Config({ annee, niveaux, reload }) {
-      const [libelle, setLibelle] = useState("2025/2026"); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
-      const [nl, setNl] = useState(""); const [ni, setNi] = useState("30000"); const [ns, setNs] = useState("");
-
-      const creerAnnee = async () => { setBusy(true); setErr(""); const { error } = await sb.from("annee_scolaire").insert({ libelle: libelle.trim(), statut: "active" }); setBusy(false); if (error) setErr(error.message); else reload(); };
-      const addNiveau = async () => { if (!nl.trim() || !annee) return; setBusy(true); setErr(""); const { error } = await sb.from("niveau").insert({ annee_id: annee.id, libelle: nl.trim(), frais_inscription: Number(ni)||0, frais_scolarite: Number(ns)||0 }); setBusy(false); if (error) setErr(error.message); else { setNl(""); setNs(""); reload(); } };
-      const delNiveau = async (id) => { await sb.from("niveau").delete().eq("id", id); reload(); };
-
-      if (!annee) return (
-        <Card className="p-5">
-          <div className="text-base font-medium mb-3">Créer l'année scolaire</div>
-          <div className="text-sm text-stone-500 mb-3">Aucune année n'existe. Créez-la pour démarrer.</div>
-          <div className="flex gap-2 items-end">
-            <Field label="Libellé"><input className={inputCls} value={libelle} onChange={(e)=>setLibelle(e.target.value)} /></Field>
-            <button className={btnCls} onClick={creerAnnee} disabled={busy}>Créer</button>
-          </div>
-          {err && <div className="text-sm text-red-600 mt-3">{err}</div>}
-        </Card>
-      );
-
-      return (
-        <Card className="p-5">
-          <div className="text-base font-medium mb-1">Niveaux — année {annee.libelle}</div>
-          <p className="text-xs text-stone-500 mb-4">Total dû par élève = inscription + scolarité.</p>
-          <div className="grid grid-cols-12 gap-2 items-end mb-4">
-            <div className="col-span-5"><Field label="Niveau"><input className={inputCls} value={nl} onChange={(e)=>setNl(e.target.value)} placeholder="Ex. 6e" /></Field></div>
-            <div className="col-span-3"><Field label="Inscription"><input className={inputCls} value={ni} onChange={(e)=>setNi(e.target.value.replace(/[^0-9]/g,""))} /></Field></div>
-            <div className="col-span-3"><Field label="Scolarité"><input className={inputCls} value={ns} onChange={(e)=>setNs(e.target.value.replace(/[^0-9]/g,""))} placeholder="85000" /></Field></div>
-            <div className="col-span-1"><button className={btnCls + " w-full px-0"} onClick={addNiveau} disabled={busy}>+</button></div>
-          </div>
-          {err && <div className="text-sm text-red-600 mb-3">{err}</div>}
-          <div className="divide-y divide-stone-100">
-            {niveaux.map((n)=>(
-              <div key={n.id} className="flex items-center justify-between py-2">
-                <div><span className="text-sm font-medium">{n.libelle}</span><span className="text-xs text-stone-500 ml-2">insc. {fmt(n.frais_inscription)} · scol. {fmt(n.frais_scolarite)}</span></div>
-                <button className="text-xs text-stone-400 hover:text-red-600" onClick={()=>delNiveau(n.id)}>Supprimer</button>
-              </div>
-            ))}
-            {niveaux.length===0 && <div className="text-sm text-stone-400 py-2">Aucun niveau. Ajoutez-en ci-dessus.</div>}
-          </div>
-        </Card>
-      );
-    }
-
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
   </script>
 </body>
 </html>
