@@ -23,7 +23,7 @@
   </script>
   <script>
     if (bootCheck()) {
-/* ==== Compta Estrella — bloc D (employés) ==== */
+/* ==== Compta Estrella — bloc D (employés) — correctif ==== */
 (() => {
   const { useState, useEffect } = React;
   const SUPABASE_URL = "https://flhkokhrwogtmwlrqxyd.supabase.co";
@@ -97,7 +97,7 @@
     }, []);
     const load = async () => {
       const q = (t) => sb.from(t).select("*").order("id");
-      const [pr, ec, an, ni, cl, ma, el, pa, sa, ch, re, lm] = await Promise.all([
+      const [pr, ec, an, ni, cl, ma, el, pa, sa, ch, re, lm, em] = await Promise.all([
         sb.from("profiles").select("role,nom,ecole_id").eq("id", session.user.id).single(),
         sb.from("ecole").select("*").limit(1),
         q("annee_scolaire"),
@@ -109,7 +109,8 @@
         q("salaire"),
         q("charge_variable"),
         q("autre_recette"),
-        sb.from("employe_matiere").select("*")
+        sb.from("employe_matiere").select("*"),
+        q("employe")
       ]);
       setProfile(pr.data);
       setEcole(ec.data && ec.data[0] || null);
@@ -123,7 +124,8 @@
         salaires: sa.data || [],
         chargesVar: ch.data || [],
         recettes: re.data || [],
-        liaisons: lm.data || []
+        liaisons: lm.data || [],
+        employes: em.data || []
       });
     };
     useEffect(() => {
