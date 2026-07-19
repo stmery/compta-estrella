@@ -23,7 +23,7 @@
   </script>
   <script>
     if (bootCheck()) {
-/* ==== Compta Estrella — bloc E-salaires ==== */
+/* ==== Compta Estrella — bloc E-salaires — correctif MOIS ==== */
 (() => {
   const { useState, useEffect } = React;
   const SUPABASE_URL = "https://flhkokhrwogtmwlrqxyd.supabase.co";
@@ -32,6 +32,7 @@
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   const fmt = (n) => new Intl.NumberFormat("fr-FR").format(Math.round(n || 0));
   const MODES = ["Esp\xE8ces", "Mobile money", "Virement", "Ch\xE8que"];
+  const MOIS = ["Ao\xFBt", "Septembre", "Octobre", "Novembre", "D\xE9cembre", "Janvier", "F\xE9vrier", "Mars", "Avril", "Mai", "Juin", "Juillet"];
   const today = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const REC_TYPES = [["subvention_etat", "Subvention de l'\xC9tat"], ["vente_articles", "Vente d'articles"], ["report_n1", "Report ann\xE9e N-1"], ["autre", "Autre"]];
   const recLabel = (t) => (REC_TYPES.find((x) => x[0] === t) || [t, t])[1];
