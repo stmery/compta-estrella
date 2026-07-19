@@ -23,7 +23,7 @@
   </script>
   <script>
     if (bootCheck()) {
-/* ==== Compta Estrella — bloc A (pré-compilé, sans Babel) ==== */
+/* ==== Compta Estrella — bloc B (pré-compilé, sans Babel) ==== */
 (() => {
   const { useState, useEffect } = React;
   const SUPABASE_URL = "https://flhkokhrwogtmwlrqxyd.supabase.co";
@@ -44,22 +44,14 @@
     return /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
       "input",
       {
-        className: inputCls + " pr-10",
+        className: inputCls + " pr-16",
         type: show ? "text" : "password",
         value,
         autoFocus,
         onChange,
         onKeyDown: (e) => e.key === "Enter" && onEnter && onEnter()
       }
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        type: "button",
-        onClick: () => setShow(!show),
-        className: "absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs px-1"
-      },
-      show ? "Masquer" : "Afficher"
-    ));
+    ), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setShow(!show), className: "absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs px-1" }, show ? "Masquer" : "Afficher"));
   }
   function Login() {
     const [mode, setMode] = useState("staff");
@@ -93,6 +85,7 @@
     const [profile, setProfile] = useState(null);
     const [ecole, setEcole] = useState(null);
     const [data, setData] = useState(null);
+    const [tab, setTab] = useState("dashboard");
     useEffect(() => {
       sb.auth.getSession().then(({ data: data2 }) => setSession(data2.session));
       const { data: sub } = sb.auth.onAuthStateChange((_e, s) => setSession(s));
@@ -100,15 +93,15 @@
     }, []);
     const load = async () => {
       const q = (t) => sb.from(t).select("*").order("id");
-      const [pr, ec, an, ni, cl, el, pa, em, sa, ch] = await Promise.all([
+      const [pr, ec, an, ni, cl, ma, el, pa, sa, ch] = await Promise.all([
         sb.from("profiles").select("role,nom,ecole_id").eq("id", session.user.id).single(),
         sb.from("ecole").select("*").limit(1),
         q("annee_scolaire"),
         q("niveau"),
         q("classe"),
+        q("matiere"),
         q("eleve"),
         q("paiement"),
-        q("employe"),
         q("salaire"),
         q("charge_variable")
       ]);
@@ -118,9 +111,9 @@
         annees: an.data || [],
         niveaux: ni.data || [],
         classes: cl.data || [],
+        matieres: ma.data || [],
         eleves: el.data || [],
         paiements: pa.data || [],
-        employes: em.data || [],
         salaires: sa.data || [],
         chargesVar: ch.data || []
       });
@@ -131,6 +124,7 @@
         setProfile(null);
         setData(null);
         setEcole(null);
+        setTab("dashboard");
       }
     }, [session]);
     if (session === void 0) return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen flex items-center justify-center text-stone-400" }, "Chargement\u2026");
@@ -146,12 +140,10 @@
       return n ? n.frais_inscription + n.frais_scolarite : 0;
     };
     const paiementsA = data.paiements.filter((p) => !p.archive && elevesA.some((e) => e.id === p.eleve_id));
-    const salairesA = data.salaires.filter((s) => !s.archive && annee && s.annee_id === annee.id);
-    const chargesVarA = data.chargesVar.filter((c) => !c.archive && annee && c.annee_id === annee.id);
+    const salaires = data.salaires.filter((s) => !s.archive && annee && s.annee_id === annee.id).reduce((s, c) => s + c.montant, 0);
+    const autres = data.chargesVar.filter((c) => !c.archive && annee && c.annee_id === annee.id).reduce((s, c) => s + c.montant, 0);
     const encaisse = paiementsA.reduce((s, p) => s + p.montant, 0);
     const prevision = elevesA.reduce((s, e) => s + feeOf(e), 0);
-    const salaires = salairesA.reduce((s, c) => s + c.montant, 0);
-    const autres = chargesVarA.reduce((s, c) => s + c.montant, 0);
     const totalCharges = salaires + autres;
     const m = {
       encaisse,
@@ -165,6 +157,19 @@
       taux: prevision > 0 ? Math.round(encaisse / prevision * 100) : 0
     };
     const isStaff = ["admin", "comptable", "secretaire"].includes(profile.role);
+    const tabs = isStaff ? [["dashboard", "Tableau de bord"], ["config", "Configuration"]] : [["dashboard", "Tableau de bord"]];
+    const active = tabs.some((t) => t[0] === tab) ? tab : "dashboard";
+    return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen" }, /* @__PURE__ */ React.createElement("div", { className: "max-w-5xl mx-auto px-4 py-6" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-3 flex-wrap mb-5" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "w-10 h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold" }, "E"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-lg font-medium leading-tight" }, "Compta Estrella", ecole ? " \xB7 " + ecole.nom : ""), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, annee ? "Ann\xE9e " + annee.libelle : "Aucune ann\xE9e active"))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 text-xs text-stone-500" }, /* @__PURE__ */ React.createElement("span", null, isStaff ? profile.nom || "Staff" : "Actionnaire \u2014 lecture seule"), /* @__PURE__ */ React.createElement("button", { onClick: () => sb.auth.signOut(), className: "px-3 py-1.5 rounded-lg border border-stone-300 hover:bg-white" }, "D\xE9connexion"))), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1 mb-5 overflow-x-auto pb-1" }, tabs.map(([id, lbl]) => /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        key: id,
+        onClick: () => setTab(id),
+        className: `text-sm px-3 py-2 rounded-lg border whitespace-nowrap shrink-0 ${active === id ? "bg-white border-stone-300 font-medium" : "border-transparent text-stone-500 hover:bg-white/60"}`
+      },
+      lbl
+    ))), active === "dashboard" && /* @__PURE__ */ React.createElement(Dashboard, { m, annee, isStaff, goConfig: () => setTab("config") }), active === "config" && isStaff && /* @__PURE__ */ React.createElement(Config, { annee, niveaux: niveauxA, classes: data.classes, matieres: data.matieres, ecoleId: profile.ecole_id, reload: load }), /* @__PURE__ */ React.createElement("p", { className: "text-center text-xs text-stone-400 mt-8" }, "Compta Estrella \xB7 ", ecole ? ecole.nom : "")));
+  }
+  function Dashboard({ m, annee, isStaff, goConfig }) {
     const salPct = m.totalCharges ? Math.round(m.salaires / m.totalCharges * 100) : 0;
     const kpis = [
       { label: "Revenus encaiss\xE9s", val: m.encaisse, unit: "FCFA" },
@@ -172,7 +177,74 @@
       { label: "Solde (tr\xE9sorerie)", val: m.solde, unit: "FCFA", pos: true },
       { label: "\xC9l\xE8ves inscrits", val: m.nbEleves, unit: "\xE9l\xE8ves", plain: true }
     ];
-    return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen" }, /* @__PURE__ */ React.createElement("div", { className: "max-w-5xl mx-auto px-4 py-6" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-3 flex-wrap mb-5" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "w-10 h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold" }, "E"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-lg font-medium leading-tight" }, "Compta Estrella", ecole ? " \xB7 " + ecole.nom : ""), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, annee ? "Ann\xE9e " + annee.libelle : "Aucune ann\xE9e active"))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 text-xs text-stone-500" }, /* @__PURE__ */ React.createElement("span", null, isStaff ? profile.nom || "Staff" : "Actionnaire \u2014 lecture seule"), /* @__PURE__ */ React.createElement("button", { onClick: () => sb.auth.signOut(), className: "px-3 py-1.5 rounded-lg border border-stone-300 hover:bg-white" }, "D\xE9connexion"))), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1 mb-5 overflow-x-auto pb-1" }, /* @__PURE__ */ React.createElement("button", { className: "text-sm px-3 py-2 rounded-lg border bg-white border-stone-300 font-medium whitespace-nowrap" }, "Tableau de bord")), !annee && /* @__PURE__ */ React.createElement(Card, { className: "p-5 mb-3 text-sm text-stone-600" }, "Aucune ann\xE9e scolaire n'est encore configur\xE9e. Les \xE9crans de configuration et de saisie arrivent au prochain bloc \u2014 pour l'instant, ce socle v\xE9rifie la connexion et la lecture s\xE9curis\xE9e de votre \xE9cole."), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3" }, kpis.map((k) => /* @__PURE__ */ React.createElement("div", { key: k.label, className: "bg-stone-50 rounded-xl p-4 border border-stone-200" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500 mb-1" }, k.label), /* @__PURE__ */ React.createElement("div", { className: `text-xl sm:text-2xl font-medium ${k.pos ? "text-emerald-800" : ""}` }, k.pos && m.solde >= 0 ? "+" : "", k.plain ? m.nbEleves : fmt(k.val)), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-400 mt-0.5" }, k.unit)))), /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-baseline justify-between mb-2 flex-wrap gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-medium" }, "Taux de recouvrement"), /* @__PURE__ */ React.createElement("span", { className: "text-sm text-stone-500" }, fmt(m.encaisse), " sur ", fmt(m.prevision), " pr\xE9vus")), /* @__PURE__ */ React.createElement("div", { className: "h-3 rounded-full bg-stone-100 overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "h-full bg-emerald-700 rounded-full", style: { width: `${Math.min(100, m.taux)}%` } })), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between mt-2 flex-wrap gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-medium text-emerald-800" }, m.taux, " % recouvr\xE9"), /* @__PURE__ */ React.createElement("span", { className: "text-sm text-amber-700" }, "Reste \xE0 recouvrer : ", fmt(m.reste), " FCFA"))), /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium mb-4" }, "R\xE9partition des charges"), [{ l: "Salaires", v: m.salaires, p: salPct, c: "bg-emerald-700" }, { l: "Autres charges", v: m.autres, p: m.totalCharges ? 100 - salPct : 0, c: "bg-teal-500" }].map((r) => /* @__PURE__ */ React.createElement("div", { key: r.l, className: "mb-3 last:mb-0" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-sm mb-1.5" }, /* @__PURE__ */ React.createElement("span", { className: "text-stone-500" }, r.l), /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, fmt(r.v), " FCFA \xB7 ", r.p, " %")), /* @__PURE__ */ React.createElement("div", { className: "h-2.5 rounded-full bg-stone-100 overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: `h-full rounded-full ${r.c}`, style: { width: `${r.p}%` } })))))), /* @__PURE__ */ React.createElement("p", { className: "text-center text-xs text-stone-400 mt-8" }, "Compta Estrella \xB7 bloc A (socle) \xB7 ", ecole ? ecole.nom : "")));
+    return /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, !annee && isStaff && /* @__PURE__ */ React.createElement(Card, { className: "p-5 text-sm text-stone-600" }, "Aucune ann\xE9e scolaire configur\xE9e. ", /* @__PURE__ */ React.createElement("button", { onClick: goConfig, className: "text-emerald-800 font-medium underline" }, "Aller \xE0 la Configuration"), " pour cr\xE9er l'ann\xE9e, les niveaux et les classes."), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3" }, kpis.map((k) => /* @__PURE__ */ React.createElement("div", { key: k.label, className: "bg-stone-50 rounded-xl p-4 border border-stone-200" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500 mb-1" }, k.label), /* @__PURE__ */ React.createElement("div", { className: `text-xl sm:text-2xl font-medium ${k.pos ? "text-emerald-800" : ""}` }, k.pos && m.solde >= 0 ? "+" : "", k.plain ? m.nbEleves : fmt(k.val)), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-400 mt-0.5" }, k.unit)))), /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-baseline justify-between mb-2 flex-wrap gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-medium" }, "Taux de recouvrement"), /* @__PURE__ */ React.createElement("span", { className: "text-sm text-stone-500" }, fmt(m.encaisse), " sur ", fmt(m.prevision), " pr\xE9vus")), /* @__PURE__ */ React.createElement("div", { className: "h-3 rounded-full bg-stone-100 overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "h-full bg-emerald-700 rounded-full", style: { width: `${Math.min(100, m.taux)}%` } })), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between mt-2 flex-wrap gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-medium text-emerald-800" }, m.taux, " % recouvr\xE9"), /* @__PURE__ */ React.createElement("span", { className: "text-sm text-amber-700" }, "Reste \xE0 recouvrer : ", fmt(m.reste), " FCFA"))), /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium mb-4" }, "R\xE9partition des charges"), [{ l: "Salaires", v: m.salaires, p: salPct, c: "bg-emerald-700" }, { l: "Autres charges", v: m.autres, p: m.totalCharges ? 100 - salPct : 0, c: "bg-teal-500" }].map((r) => /* @__PURE__ */ React.createElement("div", { key: r.l, className: "mb-3 last:mb-0" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-sm mb-1.5" }, /* @__PURE__ */ React.createElement("span", { className: "text-stone-500" }, r.l), /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, fmt(r.v), " FCFA \xB7 ", r.p, " %")), /* @__PURE__ */ React.createElement("div", { className: "h-2.5 rounded-full bg-stone-100 overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: `h-full rounded-full ${r.c}`, style: { width: `${r.p}%` } }))))));
+  }
+  function Config({ annee, niveaux, classes, matieres, ecoleId, reload }) {
+    const [lib, setLib] = useState("2025/2026");
+    const [nl, setNl] = useState("");
+    const [ni, setNi] = useState("30000");
+    const [ns, setNs] = useState("");
+    const [classeInput, setClasseInput] = useState({});
+    const [mat, setMat] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState("");
+    const run = async (fn) => {
+      setBusy(true);
+      setErr("");
+      try {
+        const { error } = await fn();
+        if (error) throw error;
+        await reload();
+      } catch (e) {
+        setErr(e.message || String(e));
+      }
+      setBusy(false);
+    };
+    const creerAnnee = () => run(() => sb.from("annee_scolaire").insert({ ecole_id: ecoleId, libelle: lib.trim(), statut: "active" }));
+    const addNiveau = () => {
+      if (!nl.trim()) return;
+      run(async () => {
+        const r = await sb.from("niveau").insert({ ecole_id: ecoleId, annee_id: annee.id, libelle: nl.trim(), frais_inscription: Number(ni) || 0, frais_scolarite: Number(ns) || 0 });
+        if (!r.error) {
+          setNl("");
+          setNs("");
+        }
+        return r;
+      });
+    };
+    const delNiveau = (id) => run(async () => {
+      const r = await sb.from("niveau").delete().eq("id", id);
+      if (r.error) return { error: { message: "Impossible : ce niveau contient encore des classes." } };
+      return r;
+    });
+    const addClasse = (niveauId) => {
+      const l = (classeInput[niveauId] || "").trim();
+      if (!l) return;
+      run(async () => {
+        const r = await sb.from("classe").insert({ ecole_id: ecoleId, niveau_id: niveauId, libelle: l });
+        if (!r.error) setClasseInput((s) => ({ ...s, [niveauId]: "" }));
+        return r;
+      });
+    };
+    const delClasse = (id) => run(async () => {
+      const r = await sb.from("classe").delete().eq("id", id);
+      if (r.error) return { error: { message: "Impossible : cette classe contient des \xE9l\xE8ves." } };
+      return r;
+    });
+    const addMat = () => {
+      if (!mat.trim()) return;
+      run(async () => {
+        const r = await sb.from("matiere").insert({ ecole_id: ecoleId, libelle: mat.trim() });
+        if (!r.error) setMat("");
+        return r;
+      });
+    };
+    const delMat = (id) => run(() => sb.from("matiere").delete().eq("id", id));
+    if (!annee) return /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-base font-medium mb-3" }, "Cr\xE9er l'ann\xE9e scolaire"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-stone-500 mb-3" }, "Premi\xE8re \xE9tape : cr\xE9ez l'ann\xE9e active. Les niveaux et classes viennent ensuite."), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2 items-end" }, /* @__PURE__ */ React.createElement(Field, { label: "Libell\xE9" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: lib, onChange: (e) => setLib(e.target.value) })), /* @__PURE__ */ React.createElement("button", { className: btnCls, onClick: creerAnnee, disabled: busy }, "Cr\xE9er")), err && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-600 mt-3" }, err));
+    return /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement(Card, { className: "p-4 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium" }, "Ann\xE9e active"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, annee.libelle))), /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-base font-medium mb-1" }, "Niveaux & classes"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-stone-500 mb-4" }, "Cr\xE9ez un niveau (avec ses tarifs), puis ajoutez-lui autant de classes que n\xE9cessaire."), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-12 gap-2 items-end mb-2" }, /* @__PURE__ */ React.createElement("div", { className: "col-span-5" }, /* @__PURE__ */ React.createElement(Field, { label: "Nouveau niveau" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: nl, onChange: (e) => setNl(e.target.value), placeholder: "Ex. 6e" }))), /* @__PURE__ */ React.createElement("div", { className: "col-span-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Inscription" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: ni, onChange: (e) => setNi(e.target.value.replace(/[^0-9]/g, "")) }))), /* @__PURE__ */ React.createElement("div", { className: "col-span-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Scolarit\xE9" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: ns, onChange: (e) => setNs(e.target.value.replace(/[^0-9]/g, "")), placeholder: "85000" }))), /* @__PURE__ */ React.createElement("div", { className: "col-span-1" }, /* @__PURE__ */ React.createElement("button", { className: btnCls + " w-full px-0", onClick: addNiveau, disabled: busy }, "+"))), /* @__PURE__ */ React.createElement("div", { className: "divide-y divide-stone-100 mt-2" }, niveaux.map((n) => {
+      const cs = classes.filter((c) => c.niveau_id === n.id);
+      return /* @__PURE__ */ React.createElement("div", { key: n.id, className: "py-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-medium" }, n.libelle), /* @__PURE__ */ React.createElement("span", { className: "text-xs text-stone-500 ml-2" }, "insc. ", fmt(n.frais_inscription), " \xB7 scol. ", fmt(n.frais_scolarite))), /* @__PURE__ */ React.createElement("button", { className: "text-xs text-stone-400 hover:text-red-600", onClick: () => delNiveau(n.id) }, "Supprimer")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-2 pl-1" }, cs.map((c) => /* @__PURE__ */ React.createElement("span", { key: c.id, className: "inline-flex items-center gap-1 text-xs bg-stone-100 rounded-full pl-3 pr-1 py-1" }, n.libelle, " ", c.libelle, /* @__PURE__ */ React.createElement("button", { className: "text-stone-400 hover:text-red-600 px-1", onClick: () => delClasse(c.id) }, "\xD7"))), /* @__PURE__ */ React.createElement("span", { className: "inline-flex items-center gap-1" }, /* @__PURE__ */ React.createElement("input", { className: "text-xs px-2 py-1 rounded-lg border border-stone-300 w-20", placeholder: "A, B\u2026", value: classeInput[n.id] || "", onChange: (e) => setClasseInput((s) => ({ ...s, [n.id]: e.target.value })), onKeyDown: (e) => e.key === "Enter" && addClasse(n.id) }), /* @__PURE__ */ React.createElement("button", { className: "text-xs text-emerald-800 hover:underline", onClick: () => addClasse(n.id) }, "+ classe"))));
+    }), niveaux.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-stone-400 py-2" }, "Aucun niveau. Ajoutez-en ci-dessus."))), /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-base font-medium mb-1" }, "Mati\xE8res"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-stone-500 mb-4" }, "La liste des mati\xE8res de l'\xE9cole (servira \xE0 rattacher les professeurs)."), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2 items-end mb-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Nouvelle mati\xE8re" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: mat, onChange: (e) => setMat(e.target.value), placeholder: "Ex. Math\xE9matiques", onKeyDown: (e) => e.key === "Enter" && addMat() })), /* @__PURE__ */ React.createElement("button", { className: btnCls, onClick: addMat, disabled: busy }, "+")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2" }, matieres.map((mm) => /* @__PURE__ */ React.createElement("span", { key: mm.id, className: "inline-flex items-center gap-1 text-xs bg-stone-100 rounded-full pl-3 pr-1 py-1" }, mm.libelle, /* @__PURE__ */ React.createElement("button", { className: "text-stone-400 hover:text-red-600 px-1", onClick: () => delMat(mm.id) }, "\xD7"))), matieres.length === 0 && /* @__PURE__ */ React.createElement("span", { className: "text-sm text-stone-400" }, "Aucune mati\xE8re pour l'instant."))), err && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-600" }, err));
   }
   ReactDOM.createRoot(document.getElementById("root")).render(/* @__PURE__ */ React.createElement(App, null));
 })();
