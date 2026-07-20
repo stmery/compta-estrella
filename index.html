@@ -26,7 +26,7 @@
   </script>
   <script>
     if (bootCheck()) {
-/* ==== Compta Estrella — scolarité versée à la création (non affecté) ==== */
+/* ==== Compta Estrella — formulaires se referment après enregistrement ==== */
 (() => {
   const { useState, useEffect } = React;
   const SUPABASE_URL = "https://flhkokhrwogtmwlrqxyd.supabase.co";
@@ -349,6 +349,7 @@
       setVerseSco("");
       setAffecte(false);
       setBusy(false);
+      setShowForm(false);
       setOk(true);
       setTimeout(() => setOk(false), 1800);
       await reload();
@@ -725,7 +726,10 @@
       setConfirmDel(e.id);
       setErr("");
     } }, "Supprimer"))));
-    return /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, editing ? /* @__PURE__ */ React.createElement(EmployeForm, { key: "edit-" + editing.id, employe: editing, matieres, liaisons, ecoleId, reload, onDone: () => setEditing(null) }) : /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowForm((s) => !s), className: showForm ? "text-sm px-4 py-2 rounded-lg border border-stone-300 hover:bg-stone-50" : btnCls }, showForm ? "Fermer le formulaire" : "\uFF0B Enregistrer un nouvel employ\xE9"), showForm && /* @__PURE__ */ React.createElement(EmployeForm, { key: "new-" + formKey, matieres, liaisons, ecoleId, reload, onDone: () => setFormKey((k) => k + 1) })), err && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-600" }, err), /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium mb-2" }, "Professeurs (", profs.length, ")"), /* @__PURE__ */ React.createElement("div", { className: "divide-y divide-stone-100" }, profs.map((e) => /* @__PURE__ */ React.createElement(Row, { key: e.id, e })), profs.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-stone-400 py-2" }, "Aucun professeur."))), /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium mb-2" }, "Autres fonctions (", autres.length, ")"), /* @__PURE__ */ React.createElement("div", { className: "divide-y divide-stone-100" }, autres.map((e) => /* @__PURE__ */ React.createElement(Row, { key: e.id, e })), autres.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-stone-400 py-2" }, "Aucun autre employ\xE9."))));
+    return /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, editing ? /* @__PURE__ */ React.createElement(EmployeForm, { key: "edit-" + editing.id, employe: editing, matieres, liaisons, ecoleId, reload, onDone: () => setEditing(null) }) : /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowForm((s) => !s), className: showForm ? "text-sm px-4 py-2 rounded-lg border border-stone-300 hover:bg-stone-50" : btnCls }, showForm ? "Fermer le formulaire" : "\uFF0B Enregistrer un nouvel employ\xE9"), showForm && /* @__PURE__ */ React.createElement(EmployeForm, { key: "new-" + formKey, matieres, liaisons, ecoleId, reload, onDone: () => {
+      setFormKey((k) => k + 1);
+      setShowForm(false);
+    } })), err && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-600" }, err), /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium mb-2" }, "Professeurs (", profs.length, ")"), /* @__PURE__ */ React.createElement("div", { className: "divide-y divide-stone-100" }, profs.map((e) => /* @__PURE__ */ React.createElement(Row, { key: e.id, e })), profs.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-stone-400 py-2" }, "Aucun professeur."))), /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium mb-2" }, "Autres fonctions (", autres.length, ")"), /* @__PURE__ */ React.createElement("div", { className: "divide-y divide-stone-100" }, autres.map((e) => /* @__PURE__ */ React.createElement(Row, { key: e.id, e })), autres.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-stone-400 py-2" }, "Aucun autre employ\xE9."))));
   }
   function PaiementsPanel({ eleve, paiements, ecoleId, reload, onClose }) {
     const [editP, setEditP] = useState(null);
