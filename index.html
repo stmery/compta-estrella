@@ -8,6 +8,9 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <style> body { font-family: ui-sans-serif, system-ui, sans-serif; } </style>
 </head>
 <body class="bg-stone-100">
@@ -23,7 +26,7 @@
   </script>
   <script>
     if (bootCheck()) {
-/* ==== Compta Estrella — bloc F2 (historique paiements) ==== */
+/* ==== Compta Estrella — bloc H (rapports Excel + PDF) ==== */
 (() => {
   const { useState, useEffect } = React;
   const SUPABASE_URL = "https://flhkokhrwogtmwlrqxyd.supabase.co";
@@ -35,6 +38,20 @@
     if (!iso) return "\u2014";
     const p = String(iso).slice(0, 10).split("-");
     return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : iso;
+  };
+  const MONTH_NAMES = { "01": "Janvier", "02": "F\xE9vrier", "03": "Mars", "04": "Avril", "05": "Mai", "06": "Juin", "07": "Juillet", "08": "Ao\xFBt", "09": "Septembre", "10": "Octobre", "11": "Novembre", "12": "D\xE9cembre" };
+  const dlXlsx = (aoa, sheet, file) => {
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheet);
+    XLSX.writeFile(wb, file);
+  };
+  const dlPdf = (title, head, body, file) => {
+    const doc = new window.jspdf.jsPDF();
+    doc.setFontSize(14);
+    doc.text(title, 14, 16);
+    doc.autoTable({ startY: 22, head: [head], body, styles: { fontSize: 8 }, headStyles: { fillColor: [6, 95, 70] } });
+    doc.save(file);
   };
   const MODES = ["Esp\xE8ces", "Mobile money", "Virement", "Ch\xE8que"];
   const MOIS = ["Ao\xFBt", "Septembre", "Octobre", "Novembre", "D\xE9cembre", "Janvier", "F\xE9vrier", "Mars", "Avril", "Mai", "Juin", "Juillet"];
@@ -194,7 +211,7 @@
     const hasSalaires = (empId) => data.salaires.some((s) => s.employe_id === empId);
     const paiementsOf = (id) => data.paiements.filter((p) => !p.archive && p.eleve_id === id);
     const base = [["dashboard", "Tableau de bord"], ["eleves", "\xC9l\xE8ves"]];
-    const tabs = isStaff ? [...base, ["paiement", "Paiement"], ["recettes", "Recettes & charges"], ["employes", "Employ\xE9s"], ["config", "Configuration"]] : base;
+    const tabs = isStaff ? [...base, ["paiement", "Paiement"], ["recettes", "Recettes & charges"], ["employes", "Employ\xE9s"], ["rapports", "Rapports"], ["config", "Configuration"]] : [...base, ["rapports", "Rapports"]];
     const active = tabs.some((t) => t[0] === tab) ? tab : "dashboard";
     return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen" }, /* @__PURE__ */ React.createElement("div", { className: "max-w-5xl mx-auto px-4 py-6" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-3 flex-wrap mb-5" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "w-10 h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold" }, "E"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-lg font-medium leading-tight" }, "Compta Estrella", ecole ? " \xB7 " + ecole.nom : ""), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, annee ? "Ann\xE9e " + annee.libelle : "Aucune ann\xE9e active"))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 text-xs text-stone-500" }, /* @__PURE__ */ React.createElement("span", null, isStaff ? profile.nom || "Staff" : "Actionnaire \u2014 lecture seule"), /* @__PURE__ */ React.createElement("button", { onClick: () => sb.auth.signOut(), className: "px-3 py-1.5 rounded-lg border border-stone-300 hover:bg-white" }, "D\xE9connexion"))), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1 mb-5 overflow-x-auto pb-1" }, tabs.map(([id, lbl]) => /* @__PURE__ */ React.createElement(
       "button",
@@ -204,7 +221,7 @@
         className: `text-sm px-3 py-2 rounded-lg border whitespace-nowrap shrink-0 ${active === id ? "bg-white border-stone-300 font-medium" : "border-transparent text-stone-500 hover:bg-white/60"}`
       },
       lbl
-    ))), active === "dashboard" && /* @__PURE__ */ React.createElement(Dashboard, { m, annee, isStaff, goConfig: () => setTab("config") }), active === "eleves" && /* @__PURE__ */ React.createElement(Eleves, { niveaux: niveauxA, classes: classesA, eleves: elevesA, situation, hasPaiements, paiementsOf, ecoleId: profile.ecole_id, isStaff, reload: load, goConfig: () => setTab("config") }), active === "paiement" && isStaff && /* @__PURE__ */ React.createElement(Paiement, { niveaux: niveauxA, classes: classesA, eleves: elevesA, situation, ecoleId: profile.ecole_id, reload: load }), active === "recettes" && isStaff && /* @__PURE__ */ React.createElement(RecettesCharges, { annee, recettes: recettesA, charges: chargesVarA, salaires: salairesA, employes: data.employes, ecoleId: profile.ecole_id, reload: load }), active === "employes" && isStaff && /* @__PURE__ */ React.createElement(Employes, { employes: data.employes, matieres: data.matieres, liaisons: data.liaisons, hasSalaires, ecoleId: profile.ecole_id, reload: load }), active === "config" && isStaff && /* @__PURE__ */ React.createElement(Config, { annee, niveaux: niveauxA, classes: data.classes, matieres: data.matieres, ecoleId: profile.ecole_id, reload: load }), /* @__PURE__ */ React.createElement("p", { className: "text-center text-xs text-stone-400 mt-8" }, "Compta Estrella \xB7 ", ecole ? ecole.nom : "")));
+    ))), active === "dashboard" && /* @__PURE__ */ React.createElement(Dashboard, { m, annee, isStaff, goConfig: () => setTab("config") }), active === "eleves" && /* @__PURE__ */ React.createElement(Eleves, { niveaux: niveauxA, classes: classesA, eleves: elevesA, situation, hasPaiements, paiementsOf, ecoleId: profile.ecole_id, isStaff, reload: load, goConfig: () => setTab("config") }), active === "paiement" && isStaff && /* @__PURE__ */ React.createElement(Paiement, { niveaux: niveauxA, classes: classesA, eleves: elevesA, situation, ecoleId: profile.ecole_id, reload: load }), active === "recettes" && isStaff && /* @__PURE__ */ React.createElement(RecettesCharges, { annee, recettes: recettesA, charges: chargesVarA, salaires: salairesA, employes: data.employes, ecoleId: profile.ecole_id, reload: load }), active === "employes" && isStaff && /* @__PURE__ */ React.createElement(Employes, { employes: data.employes, matieres: data.matieres, liaisons: data.liaisons, hasSalaires, ecoleId: profile.ecole_id, reload: load }), active === "rapports" && /* @__PURE__ */ React.createElement(Rapports, { eleves: elevesA, niveaux: niveauxA, classes: classesA, situation, recettes: recettesA, charges: chargesVarA, salaires: salairesA, employes: data.employes, liaisons: data.liaisons, matieres: data.matieres, m, annee }), active === "config" && isStaff && /* @__PURE__ */ React.createElement(Config, { annee, niveaux: niveauxA, classes: data.classes, matieres: data.matieres, ecoleId: profile.ecole_id, reload: load }), /* @__PURE__ */ React.createElement("p", { className: "text-center text-xs text-stone-400 mt-8" }, "Compta Estrella \xB7 ", ecole ? ecole.nom : "")));
   }
   function Eleves({ niveaux, classes, eleves, situation, hasPaiements, paiementsOf, ecoleId, isStaff, reload, goConfig }) {
     var _a, _b;
@@ -670,6 +687,77 @@
       else await reload();
     };
     return /* @__PURE__ */ React.createElement(Card, { className: "p-5 border-emerald-300" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-base font-medium" }, "Versements de ", eleve.nom, " ", eleve.prenoms), /* @__PURE__ */ React.createElement("button", { className: "text-xs text-stone-400 hover:text-stone-600", onClick: onClose }, "Fermer")), editP && /* @__PURE__ */ React.createElement("div", { className: "bg-stone-50 rounded-lg p-3 border border-stone-200 mb-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500 mb-2" }, "Modifier le versement"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-2 mb-2" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: type, onChange: (e) => setType(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "inscription" }, "Inscription"), /* @__PURE__ */ React.createElement("option", { value: "scolarite" }, "Scolarit\xE9")), /* @__PURE__ */ React.createElement("input", { className: inputCls, value: montant, onChange: (e) => setMontant(e.target.value.replace(/[^0-9]/g, "")), placeholder: "Montant" }), /* @__PURE__ */ React.createElement("select", { className: inputCls, value: mode, onChange: (e) => setMode(e.target.value) }, MODES.map((mm) => /* @__PURE__ */ React.createElement("option", { key: mm }, mm))), /* @__PURE__ */ React.createElement("input", { className: inputCls, type: "date", max: today(), value: date, onChange: (e) => setDate(e.target.value) })), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement("button", { className: btnCls, onClick: save, disabled: busy }, "Enregistrer"), /* @__PURE__ */ React.createElement("button", { className: "text-sm px-4 py-2 rounded-lg border border-stone-300 hover:bg-stone-50", onClick: cancel }, "Annuler"))), /* @__PURE__ */ React.createElement("div", { className: "divide-y divide-stone-100" }, paiements.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-stone-400 py-2" }, "Aucun versement enregistr\xE9."), paiements.map((p) => /* @__PURE__ */ React.createElement("div", { key: p.id, className: "flex items-center justify-between py-2 gap-2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm" }, p.type === "inscription" ? "Inscription" : "Scolarit\xE9", " \xB7 ", fmt(p.montant), " FCFA"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, frDate(p.date_paiement), " \xB7 ", p.mode_paiement || "\u2014")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 shrink-0" }, confirmDel === p.id ? /* @__PURE__ */ React.createElement("span", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("button", { className: "text-xs text-red-600 font-medium", onClick: () => del(p.id) }, "Confirmer"), /* @__PURE__ */ React.createElement("button", { className: "text-xs text-stone-400", onClick: () => setConfirmDel(null) }, "Annuler")) : /* @__PURE__ */ React.createElement("span", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("button", { className: "text-xs text-emerald-800 hover:underline", onClick: () => startEdit(p) }, "Modifier"), /* @__PURE__ */ React.createElement("button", { className: "text-xs text-stone-400 hover:text-red-600", onClick: () => setConfirmDel(p.id) }, "Supprimer")))))), err && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-600 mt-2" }, err));
+  }
+  function Rapports({ eleves, niveaux, classes, situation, recettes, charges, salaires, employes, liaisons, matieres, m, annee }) {
+    const [fNiv, setFNiv] = useState("Tous");
+    const [fCla, setFCla] = useState("Tous");
+    const [fGen, setFGen] = useState("Tous");
+    const [fSit, setFSit] = useState("Tous");
+    const [moisDep, setMoisDep] = useState("Tous");
+    const [moisSal, setMoisSal] = useState("Tous");
+    const [err, setErr] = useState("");
+    const monthOfDate = (d) => d ? MONTH_NAMES[String(d).slice(5, 7)] || "\u2014" : "\u2014";
+    const classesN = fNiv === "Tous" ? classes : classes.filter((c) => c.niveau_id === Number(fNiv));
+    const nomClasse = (id) => {
+      const c = classes.find((x) => x.id === id);
+      const n = niveaux.find((x) => x.id === (c == null ? void 0 : c.niveau_id));
+      return c && n ? n.libelle + " " + c.libelle : "\u2014";
+    };
+    const nomNiveau = (cid) => {
+      const c = classes.find((x) => x.id === cid);
+      const n = niveaux.find((x) => x.id === (c == null ? void 0 : c.niveau_id));
+      return (n == null ? void 0 : n.libelle) || "\u2014";
+    };
+    const empName = (id) => {
+      const e = (employes || []).find((x) => x.id === id);
+      return e ? e.nom + " " + (e.prenoms || "") : "\u2014";
+    };
+    const matOf = (id) => liaisons.filter((l) => l.employe_id === id).map((l) => {
+      var _a;
+      return (_a = matieres.find((mm) => mm.id === l.matiere_id)) == null ? void 0 : _a.libelle;
+    }).filter(Boolean).join(", ");
+    const guard = (fn) => {
+      try {
+        if (typeof XLSX === "undefined" || !window.jspdf) {
+          setErr("Les librairies d'export se chargent encore \u2014 r\xE9essayez dans un instant.");
+          return;
+        }
+        setErr("");
+        fn();
+      } catch (e) {
+        setErr(e.message || String(e));
+      }
+    };
+    const elevesFiltres = eleves.filter((e) => {
+      const c = classes.find((x) => x.id === e.classe_id);
+      const n = niveaux.find((x) => x.id === (c == null ? void 0 : c.niveau_id));
+      if (fNiv !== "Tous" && (n == null ? void 0 : n.id) !== Number(fNiv)) return false;
+      if (fCla !== "Tous" && e.classe_id !== Number(fCla)) return false;
+      if (fGen !== "Tous" && e.genre !== fGen) return false;
+      const s = situation(e.id);
+      if (fSit === "solde" && s.reste !== 0) return false;
+      if (fSit === "nonsolde" && s.reste === 0) return false;
+      return true;
+    });
+    const eleveHead = ["Niveau", "Classe", "Nom", "Pr\xE9noms", "Genre", "Inscription", "Scolarit\xE9", "Total d\xFB", "Reste", "Situation"];
+    const eleveBody = () => elevesFiltres.map((e) => {
+      const s = situation(e.id);
+      return [nomNiveau(e.classe_id), nomClasse(e.classe_id), e.nom, e.prenoms, e.genre, s.insVerse, s.scoVerse, s.du, s.reste, s.reste === 0 ? "Sold\xE9" : "Non sold\xE9"];
+    });
+    const bilanRows = [["Revenus scolarit\xE9", m.encaisseScolarite], ["Autres recettes", m.autresRecettes], ["Total encaiss\xE9", m.encaisse], ["Pr\xE9vision scolarit\xE9", m.prevision], ["Reste \xE0 recouvrer", m.reste], ["Salaires", m.salaires], ["Autres charges", m.autres], ["Total charges", m.totalCharges], ["Solde (tr\xE9sorerie)", m.solde], ["\xC9l\xE8ves inscrits", m.nbEleves]];
+    const recBody = () => recettes.map((r) => [recLabel(r.type), r.libelle || "", frDate(r.date_reception), r.montant]);
+    const depF = () => charges.filter((c) => moisDep === "Tous" || monthOfDate(c.date_charge) === moisDep);
+    const depBody = () => depF().map((c) => [c.designation, c.prestataire || "", frDate(c.date_charge), c.montant]);
+    const salF = () => (salaires || []).filter((s) => moisSal === "Tous" || s.mois === moisSal);
+    const salBody = () => salF().map((s) => [empName(s.employe_id), s.mois, frDate(s.date_paiement), s.montant]);
+    const empBody = () => (employes || []).filter((e) => !e.archive).map((e) => [e.type === "professeur" ? "Professeur" : "Autre", e.nom, e.prenoms || "", e.genre, e.num_cnps || "", e.type === "professeur" ? matOf(e.id) : e.fonction || "", e.actif ? "Oui" : "Non"]);
+    const an = annee ? annee.libelle : "";
+    const Btns = ({ xlsx, pdf }) => /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement("button", { className: btnCls + " py-1.5", onClick: xlsx }, "Excel"), /* @__PURE__ */ React.createElement("button", { className: "flex items-center gap-2 text-sm font-medium px-4 py-1.5 rounded-lg border border-stone-300 hover:bg-stone-50", onClick: pdf }, "PDF"));
+    const selCls = "text-sm px-3 py-2 rounded-lg border border-stone-300 bg-white";
+    return /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-base font-medium mb-3" }, "Liste des \xE9l\xE8ves"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, /* @__PURE__ */ React.createElement("select", { className: selCls, value: fNiv, onChange: (e) => {
+      setFNiv(e.target.value);
+      setFCla("Tous");
+    } }, /* @__PURE__ */ React.createElement("option", { value: "Tous" }, "Tous les niveaux"), niveaux.map((n) => /* @__PURE__ */ React.createElement("option", { key: n.id, value: n.id }, n.libelle))), /* @__PURE__ */ React.createElement("select", { className: selCls, value: fCla, onChange: (e) => setFCla(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "Tous" }, "Toutes les classes"), classesN.map((c) => /* @__PURE__ */ React.createElement("option", { key: c.id, value: c.id }, nomClasse(c.id)))), /* @__PURE__ */ React.createElement("select", { className: selCls, value: fGen, onChange: (e) => setFGen(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "Tous" }, "Tous genres"), /* @__PURE__ */ React.createElement("option", { value: "M" }, "Masculin"), /* @__PURE__ */ React.createElement("option", { value: "F" }, "F\xE9minin")), /* @__PURE__ */ React.createElement("select", { className: selCls, value: fSit, onChange: (e) => setFSit(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "Tous" }, "Toutes situations"), /* @__PURE__ */ React.createElement("option", { value: "solde" }, "Sold\xE9"), /* @__PURE__ */ React.createElement("option", { value: "nonsolde" }, "Non sold\xE9"))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between flex-wrap gap-2" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, elevesFiltres.length, " \xE9l\xE8ve(s) s\xE9lectionn\xE9(s)"), /* @__PURE__ */ React.createElement(Btns, { xlsx: () => guard(() => dlXlsx([eleveHead, ...eleveBody()], "\xC9l\xE8ves", "liste_eleves.xlsx")), pdf: () => guard(() => dlPdf("Liste des \xE9l\xE8ves \u2014 " + an, eleveHead, eleveBody(), "liste_eleves.pdf")) }))), /* @__PURE__ */ React.createElement(Card, { className: "p-4 flex items-center justify-between gap-3 flex-wrap" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium" }, "Bilan financier"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, "Recettes, charges, solde, recouvrement")), /* @__PURE__ */ React.createElement(Btns, { xlsx: () => guard(() => dlXlsx([["Bilan financier \u2014 " + an], [], ["Indicateur", "Montant (FCFA)"], ...bilanRows], "Bilan", "bilan.xlsx")), pdf: () => guard(() => dlPdf("Bilan financier \u2014 " + an, ["Indicateur", "Montant (FCFA)"], bilanRows.map((r) => [r[0], fmt(r[1])]), "bilan.pdf")) })), /* @__PURE__ */ React.createElement(Card, { className: "p-4 flex items-center justify-between gap-3 flex-wrap" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium" }, "Autres recettes"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, recettes.length, " ligne(s)")), /* @__PURE__ */ React.createElement(Btns, { xlsx: () => guard(() => dlXlsx([["Type", "Libell\xE9", "Date", "Montant"], ...recBody()], "Recettes", "autres_recettes.xlsx")), pdf: () => guard(() => dlPdf("Autres recettes \u2014 " + an, ["Type", "Libell\xE9", "Date", "Montant"], recBody(), "autres_recettes.pdf")) })), /* @__PURE__ */ React.createElement(Card, { className: "p-4 flex items-center justify-between gap-3 flex-wrap" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium" }, "D\xE9penses"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, depF().length, " ligne(s)")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 flex-wrap" }, /* @__PURE__ */ React.createElement("select", { className: selCls, value: moisDep, onChange: (e) => setMoisDep(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "Tous" }, "Tous les mois"), MOIS.map((mm) => /* @__PURE__ */ React.createElement("option", { key: mm }, mm))), /* @__PURE__ */ React.createElement(Btns, { xlsx: () => guard(() => dlXlsx([["D\xE9signation", "Prestataire", "Date", "Montant"], ...depBody()], "D\xE9penses", "depenses.xlsx")), pdf: () => guard(() => dlPdf("D\xE9penses \u2014 " + an, ["D\xE9signation", "Prestataire", "Date", "Montant"], depBody(), "depenses.pdf")) }))), /* @__PURE__ */ React.createElement(Card, { className: "p-4 flex items-center justify-between gap-3 flex-wrap" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium" }, "Salaires"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, salF().length, " ligne(s)")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 flex-wrap" }, /* @__PURE__ */ React.createElement("select", { className: selCls, value: moisSal, onChange: (e) => setMoisSal(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "Tous" }, "Tous les mois"), MOIS.map((mm) => /* @__PURE__ */ React.createElement("option", { key: mm }, mm))), /* @__PURE__ */ React.createElement(Btns, { xlsx: () => guard(() => dlXlsx([["Employ\xE9", "Mois", "Date", "Montant"], ...salBody()], "Salaires", "salaires.xlsx")), pdf: () => guard(() => dlPdf("Salaires \u2014 " + an, ["Employ\xE9", "Mois", "Date", "Montant"], salBody(), "salaires.pdf")) }))), /* @__PURE__ */ React.createElement(Card, { className: "p-4 flex items-center justify-between gap-3 flex-wrap" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium" }, "Liste des employ\xE9s"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-stone-500" }, "Professeurs (mati\xE8res) et autres fonctions")), /* @__PURE__ */ React.createElement(Btns, { xlsx: () => guard(() => dlXlsx([["Type", "Nom", "Pr\xE9noms", "Genre", "CNPS", "Mati\xE8res / Fonction", "Actif"], ...empBody()], "Employ\xE9s", "employes.xlsx")), pdf: () => guard(() => dlPdf("Liste des employ\xE9s \u2014 " + an, ["Type", "Nom", "Pr\xE9noms", "Genre", "CNPS", "Mati\xE8res/Fonction", "Actif"], empBody(), "employes.pdf")) })), err && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-600" }, err));
   }
   function Config({ annee, niveaux, classes, matieres, ecoleId, reload }) {
     const [lib, setLib] = useState("2025/2026");
