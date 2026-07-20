@@ -26,7 +26,7 @@
   </script>
   <script>
     if (bootCheck()) {
-/* ==== Compta Estrella — formulaires se referment après enregistrement ==== */
+/* ==== Compta Estrella — garde-fous paiement (soldé / trop-perçu / affecté) ==== */
 (() => {
   const { useState, useEffect } = React;
   const SUPABASE_URL = "https://flhkokhrwogtmwlrqxyd.supabase.co";
@@ -306,6 +306,19 @@
         setErr("Nom, pr\xE9noms et classe sont requis.");
         return;
       }
+      const fi = (niv == null ? void 0 : niv.frais_inscription) || 0, fa = (niv == null ? void 0 : niv.frais_annexes) || 0, fs = (niv == null ? void 0 : niv.frais_scolarite) || 0;
+      if ((Number(verse) || 0) > fi) {
+        setErr("Le versement d'inscription d\xE9passe les droits dus (" + fmt(fi) + " FCFA).");
+        return;
+      }
+      if ((Number(verseAnn) || 0) > fa) {
+        setErr("Le versement de frais annexes d\xE9passe le montant d\xFB (" + fmt(fa) + " FCFA).");
+        return;
+      }
+      if (!affecte && (Number(verseSco) || 0) > fs) {
+        setErr("Le versement de scolarit\xE9 d\xE9passe le montant d\xFB (" + fmt(fs) + " FCFA).");
+        return;
+      }
       setBusy(true);
       setErr("");
       const { data: el, error } = await sb.from("eleve").insert({ ecole_id: ecoleId, classe_id: effClasseId, nom: nom.trim(), prenoms: prenoms.trim(), genre, affecte, date_naissance: naissance || null }).select().single();
@@ -444,7 +457,7 @@
     ].map((g) => /* @__PURE__ */ React.createElement(Card, { key: g.label, className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-baseline justify-between mb-2 flex-wrap gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-medium" }, g.label), /* @__PURE__ */ React.createElement("span", { className: "text-sm text-stone-500" }, fmt(g.enc), " sur ", fmt(g.att), " attendus")), /* @__PURE__ */ React.createElement("div", { className: "h-3 rounded-full bg-stone-100 overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "h-full bg-emerald-700 rounded-full", style: { width: `${Math.min(100, g.taux)}%` } })), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between mt-2 flex-wrap gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-medium text-emerald-800" }, g.taux, " % recouvr\xE9"), /* @__PURE__ */ React.createElement("span", { className: "text-sm text-amber-700" }, "Reste : ", fmt(g.reste), " FCFA")))), /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium mb-4" }, "R\xE9partition des charges"), [{ l: "Salaires", v: m.salaires, p: salPct, c: "bg-emerald-700" }, { l: "Autres charges", v: m.autres, p: m.totalCharges ? 100 - salPct : 0, c: "bg-teal-500" }].map((r) => /* @__PURE__ */ React.createElement("div", { key: r.l, className: "mb-3 last:mb-0" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-sm mb-1.5" }, /* @__PURE__ */ React.createElement("span", { className: "text-stone-500" }, r.l), /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, fmt(r.v), " FCFA \xB7 ", r.p, " %")), /* @__PURE__ */ React.createElement("div", { className: "h-2.5 rounded-full bg-stone-100 overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: `h-full rounded-full ${r.c}`, style: { width: `${r.p}%` } }))))));
   }
   function Paiement({ niveaux, classes, eleves, situation, ecoleId, reload }) {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     const [niveauId, setNiveauId] = useState(((_a = niveaux[0]) == null ? void 0 : _a.id) || "");
     const classesN = classes.filter((c) => c.niveau_id === Number(niveauId));
     const [classeId, setClasseId] = useState("");
@@ -452,23 +465,46 @@
     const list = eleves.filter((e) => e.classe_id === effClasseId);
     const [eleveId, setEleveId] = useState("");
     const curId = list.some((e) => e.id === Number(eleveId)) ? Number(eleveId) : ((_c = list[0]) == null ? void 0 : _c.id) || "";
+    const curEleve = list.find((e) => e.id === curId);
     const s = curId ? situation(curId) : null;
-    const [type, setType] = useState("scolarite");
+    const [type, setType] = useState("inscription");
     const [montant, setMontant] = useState("");
     const [mode, setMode] = useState(MODES[0]);
     const [busy, setBusy] = useState(false);
     const [ok, setOk] = useState(false);
     const [err, setErr] = useState("");
     const niv = niveaux.find((n) => n.id === Number(niveauId));
+    const opts = [];
+    if (((niv == null ? void 0 : niv.frais_inscription) || 0) > 0) opts.push(["inscription", "Inscription"]);
+    if (curEleve && !curEleve.affecte && ((niv == null ? void 0 : niv.frais_scolarite) || 0) > 0) opts.push(["scolarite", "Scolarit\xE9"]);
+    if (((niv == null ? void 0 : niv.frais_annexes) || 0) > 0) opts.push(["annexes", "Frais annexes"]);
+    const effType = opts.some((o) => o[0] === type) ? type : ((_d = opts[0]) == null ? void 0 : _d[0]) || "";
+    const resteType = s ? effType === "inscription" ? s.resteIns : effType === "scolarite" ? s.resteSco : effType === "annexes" ? s.resteAnn : 0 : 0;
     const submit = async () => {
       const v = Number(montant) || 0;
-      if (!curId || v <= 0) {
-        setErr("Choisissez un \xE9l\xE8ve et un montant.");
+      if (!curId) {
+        setErr("Choisissez un \xE9l\xE8ve.");
+        return;
+      }
+      if (!effType) {
+        setErr("Aucun poste \xE0 encaisser pour cet \xE9l\xE8ve.");
+        return;
+      }
+      if (v <= 0) {
+        setErr("Saisissez un montant.");
+        return;
+      }
+      if (resteType <= 0) {
+        setErr("Ce poste est d\xE9j\xE0 sold\xE9 pour cet \xE9l\xE8ve.");
+        return;
+      }
+      if (v > resteType) {
+        setErr("Le montant d\xE9passe le reste d\xFB (" + fmt(resteType) + " FCFA).");
         return;
       }
       setBusy(true);
       setErr("");
-      const { error } = await sb.from("paiement").insert({ ecole_id: ecoleId, eleve_id: curId, type, montant: v, mode_paiement: mode });
+      const { error } = await sb.from("paiement").insert({ ecole_id: ecoleId, eleve_id: curId, type: effType, montant: v, mode_paiement: mode });
       setBusy(false);
       if (error) {
         setErr(error.message);
@@ -480,14 +516,14 @@
       await reload();
     };
     if (niveaux.length === 0) return /* @__PURE__ */ React.createElement(Card, { className: "p-5 text-sm text-stone-500" }, "Configurez d'abord les niveaux et classes.");
-    return /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-base font-medium mb-4" }, "Enregistrer un paiement de scolarit\xE9"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-3 gap-3 mb-4" }, /* @__PURE__ */ React.createElement(Field, { label: "Niveau" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: niveauId, onChange: (e) => {
+    return /* @__PURE__ */ React.createElement(Card, { className: "p-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-base font-medium mb-4" }, "Enregistrer un paiement"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-3 gap-3 mb-4" }, /* @__PURE__ */ React.createElement(Field, { label: "Niveau" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: niveauId, onChange: (e) => {
       setNiveauId(e.target.value);
       setClasseId("");
       setEleveId("");
     } }, niveaux.map((n) => /* @__PURE__ */ React.createElement("option", { key: n.id, value: n.id }, n.libelle)))), /* @__PURE__ */ React.createElement(Field, { label: "Classe" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: effClasseId, onChange: (e) => {
       setClasseId(e.target.value);
       setEleveId("");
-    } }, classesN.length === 0 && /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014"), classesN.map((c) => /* @__PURE__ */ React.createElement("option", { key: c.id, value: c.id }, niv.libelle, " ", c.libelle)))), /* @__PURE__ */ React.createElement(Field, { label: "\xC9l\xE8ve" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: curId || "", onChange: (e) => setEleveId(e.target.value) }, list.length === 0 && /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014"), list.map((e) => /* @__PURE__ */ React.createElement("option", { key: e.id, value: e.id }, e.nom, " ", e.prenoms))))), s && /* @__PURE__ */ React.createElement("div", { className: "mb-4" }, /* @__PURE__ */ React.createElement(SituationPanel, { s })), /* @__PURE__ */ React.createElement(Field, { label: "Type de paiement" }, /* @__PURE__ */ React.createElement("div", { className: "inline-flex gap-1 bg-stone-100 p-1 rounded-lg mb-4" }, [["inscription", "Inscription"], ["scolarite", "Scolarit\xE9"], ["annexes", "Frais annexes"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setType(v), className: `text-sm px-4 py-1.5 rounded-md ${type === v ? "bg-emerald-800 text-white font-medium" : "text-stone-500"}` }, l)))), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ React.createElement(Field, { label: "Montant (FCFA)" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: montant, onChange: (e) => setMontant(e.target.value.replace(/[^0-9]/g, "")), placeholder: "50 000" })), /* @__PURE__ */ React.createElement(Field, { label: "Mode" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: mode, onChange: (e) => setMode(e.target.value) }, MODES.map((mm) => /* @__PURE__ */ React.createElement("option", { key: mm }, mm))))), err && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-600 mb-3" }, err), /* @__PURE__ */ React.createElement("button", { className: btnCls, onClick: submit, disabled: !curId || busy }, busy ? "Enregistrement\u2026" : "Enregistrer le paiement"), ok && /* @__PURE__ */ React.createElement("span", { className: "ml-3 text-sm text-emerald-700" }, "Enregistr\xE9 \xB7 situation mise \xE0 jour"));
+    } }, classesN.length === 0 && /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014"), classesN.map((c) => /* @__PURE__ */ React.createElement("option", { key: c.id, value: c.id }, niv.libelle, " ", c.libelle)))), /* @__PURE__ */ React.createElement(Field, { label: "\xC9l\xE8ve" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: curId || "", onChange: (e) => setEleveId(e.target.value) }, list.length === 0 && /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014"), list.map((e) => /* @__PURE__ */ React.createElement("option", { key: e.id, value: e.id }, e.nom, " ", e.prenoms, e.affecte ? " (affect\xE9)" : ""))))), s && /* @__PURE__ */ React.createElement("div", { className: "mb-4" }, /* @__PURE__ */ React.createElement(SituationPanel, { s })), opts.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "text-sm text-stone-500" }, "Aucun poste \xE0 encaisser pour cet \xE9l\xE8ve", curEleve && curEleve.affecte ? " (affect\xE9 : pas de scolarit\xE9)" : "", ".") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Field, { label: "Type de paiement" }, /* @__PURE__ */ React.createElement("div", { className: "inline-flex gap-1 bg-stone-100 p-1 rounded-lg mb-4" }, opts.map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setType(v), className: `text-sm px-4 py-1.5 rounded-md ${effType === v ? "bg-emerald-800 text-white font-medium" : "text-stone-500"}` }, l)))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between bg-stone-50 rounded-lg px-3 py-2 border border-stone-200 mb-4" }, /* @__PURE__ */ React.createElement("span", { className: "text-sm text-stone-500" }, "Reste d\xFB sur ce poste"), /* @__PURE__ */ React.createElement("span", { className: `text-sm font-medium ${resteType > 0 ? "text-amber-700" : "text-emerald-700"}` }, resteType > 0 ? fmt(resteType) + " FCFA" : "Sold\xE9")), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ React.createElement(Field, { label: "Montant (FCFA)" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: montant, onChange: (e) => setMontant(e.target.value.replace(/[^0-9]/g, "")), placeholder: "0" })), /* @__PURE__ */ React.createElement(Field, { label: "Mode" }, /* @__PURE__ */ React.createElement("select", { className: inputCls, value: mode, onChange: (e) => setMode(e.target.value) }, MODES.map((mm) => /* @__PURE__ */ React.createElement("option", { key: mm }, mm))))), err && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-600 mb-3" }, err), /* @__PURE__ */ React.createElement("button", { className: btnCls, onClick: submit, disabled: !curId || busy || resteType <= 0 }, busy ? "Enregistrement\u2026" : "Enregistrer le paiement"), ok && /* @__PURE__ */ React.createElement("span", { className: "ml-3 text-sm text-emerald-700" }, "Enregistr\xE9 \xB7 situation mise \xE0 jour")));
   }
   function SituationPanel({ s }) {
     const soldee = s.reste === 0;
